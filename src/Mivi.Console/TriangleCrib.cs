@@ -29,14 +29,6 @@ namespace Mivi.Console
             var vertexContainers = CreateVertices(1);
 
             var location = glGetUniformLocation(program, "color");
-            var color1 = GetRandomColor();
-            glUniform3f(location, color1[0], color1[1], color1[2]);
-
-            // var program2 = CreateProgram();
-            var containers2 = CreateVertices(2);
-            var location2 = glGetUniformLocation(program, "color2");
-            var color2 = GetRandomColor();
-            glUniform3f(location2, color2[0], color2[1], color2[2]);
 
             long n = 0;
 
@@ -53,31 +45,14 @@ namespace Mivi.Console
 
                 glUseProgram(program);
 
-                if (n % 60 == 0)
-                {
-                    color1 = GetRandomColor();
-                }
-                glUniform3f(location, color1[0], color1[1], color1[2]);
-
-
                 foreach (var x in vertexContainers)
                 {
-                    glBindBuffer(GL_ARRAY_BUFFER, x.VertexBuffer);
-                    glBindVertexArray(x.VertexArray);
-                    glDrawArrays(GL_TRIANGLES, 0, 3);
-                }
-                // glClear(GL_COLOR_BUFFER_BIT);
+                    if (n % 60 == 0)
+                    {
+                        x.Color = GetRandomColor();
+                    }
+                    glUniform3f(location, x.Color[0], x.Color[1], x.Color[2]);
 
-                // glUseProgram(program2);
-
-                if (n % 60 == 0)
-                {
-                    color2 = GetRandomColor();
-                }
-                glUniform3f(location, color2[0], color2[1], color2[2]);
-
-                foreach (var x in containers2)
-                {
                     glBindBuffer(GL_ARRAY_BUFFER, x.VertexBuffer);
                     glBindVertexArray(x.VertexArray);
                     glDrawArrays(GL_TRIANGLES, 0, 3);
@@ -196,20 +171,17 @@ namespace Mivi.Console
                 -0.8f, 0.8f, 0.0f,
             };
 
-            var verticeses = verticeSet == 1 ? new[]
+            var verticeses = new[]
             {
-                vertices1, vertices2
-            } : new[]
-            {
-                vertices3, vertices4
+                vertices1, vertices2, vertices3, vertices4
             };
 
-            var vertexArrays = glGenVertexArrays(2);
-            var vertexBuffers = glGenBuffers(2);
+            var vertexArrays = glGenVertexArrays(4);
+            var vertexBuffers = glGenBuffers(4);
 
             var result = new List<VertexContainer>();
 
-            for (var i = 0; i < 2; ++i)
+            for (var i = 0; i < 4; ++i)
             {
                 glBindVertexArray(vertexArrays[i]);
 
@@ -226,32 +198,19 @@ namespace Mivi.Console
                 result.Add(new VertexContainer
                 {
                     VertexArray = vertexArrays[i],
-                    VertexBuffer = vertexBuffers[i]
+                    VertexBuffer = vertexBuffers[i],
+                    Color = GetRandomColor()
                 });
             }
 
             return result;
-
-
-            // vao = glGenVertexArray();
-            // vbo = glGenBuffer();
-
-            // glBindVertexArray(vao);
-
-            // glBindBuffer(GL_ARRAY_BUFFER, vbo);
-            // fixed (float* v = &vertices1[0])
-            // {
-            //     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices1.Length, v, GL_STATIC_DRAW);
-            // }
-
-            // glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), NULL);
-            // glEnableVertexAttribArray(0);
         }
 
         private class VertexContainer
         {
             public uint VertexArray { get; set; }
             public uint VertexBuffer { get; set; }
+            public float[] Color { get; set; } = default!;
         }
     }
 }
