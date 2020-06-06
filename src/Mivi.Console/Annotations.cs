@@ -22,6 +22,8 @@ SOFTWARE. */
 
 using System;
 
+#pragma warning disable CS0649, CS8618, CS8603
+
 // ReSharper disable InheritdocConsiderUsage
 
 #pragma warning disable 1591

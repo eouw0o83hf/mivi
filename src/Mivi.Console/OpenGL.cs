@@ -5,6 +5,8 @@ using System.Security;
 using System.Text;
 using JetBrains.Annotations;
 
+#pragma warning disable CS0649, CS8618, CS8603
+
 namespace OpenGL
 {
     /// <summary>
