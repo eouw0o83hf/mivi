@@ -13,5 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Mivi.Core\Mivi.Core.csproj" />
+    <ProjectReference Include="..\glfw-net\GLFW.NET\GLFW.NET.csproj" />
   </ItemGroup>
 </Project>

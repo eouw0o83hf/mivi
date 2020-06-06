@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Commons.Music.Midi;
+using GLFW;
 using Mivi.Core;
 using SConsole = System.Console;
 
@@ -9,7 +10,36 @@ namespace Mivi.Console
 {
     public class Program
     {
-        public static async Task Main(string[] args)
+        public static void Main(string[] _)
+        {
+            // Set some common hints for the OpenGL profile creation
+            Glfw.WindowHint(Hint.ClientApi, ClientApi.OpenGL);
+            Glfw.WindowHint(Hint.ContextVersionMajor, 3);
+            Glfw.WindowHint(Hint.ContextVersionMinor, 3);
+            Glfw.WindowHint(Hint.OpenglProfile, Profile.Core);
+            Glfw.WindowHint(Hint.Doublebuffer, true);
+            Glfw.WindowHint(Hint.Decorated, true);
+            Glfw.WindowHint(Hint.OpenglForwardCompatible, true);
+
+            using (var window = new NativeWindow(800, 600, "MIVI"))
+            {
+                // Main application loop
+                while (!window.IsClosing)
+                {
+                    // OpenGL rendering
+                    // Implement any timing for flow control, etc (see Glfw.GetTime())
+
+                    // Swap the front/back buffers
+                    window.SwapBuffers();
+
+                    // Poll native operating system events (must be called or OS will think application is hanging)
+                    Glfw.PollEvents();
+                }
+            }
+
+        }
+
+        public static async Task Main_Old(string[] args)
         {
             var manager = MidiAccessManager.Default;
             var singleInput = manager.Inputs.Single();
