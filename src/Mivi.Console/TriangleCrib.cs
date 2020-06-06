@@ -34,6 +34,8 @@ namespace Mivi.Console
 
             var black = new[] { 0f, 0f, 0f };
 
+
+
             while (!Glfw.WindowShouldClose(window))
             {
                 // Swap fore/back framebuffers, and poll for operating system events.
@@ -64,14 +66,8 @@ namespace Mivi.Console
 
                     glUniform3f(location, color[0], color[1], color[2]);
 
-                    // Square
-                    glBindVertexArray(x.SquareVertexArray);
+                    glBindVertexArray(x.VertexArray);
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
-
-                    // // Triangle
-                    // glBindBuffer(GL_ARRAY_BUFFER, x.VertexBuffer);
-                    // glBindVertexArray(x.VertexArray);
-                    // glDrawArrays(GL_TRIANGLES, 0, 3);
                 }
             }
 
@@ -118,6 +114,7 @@ namespace Mivi.Console
             var x = (screen.Width - width) / 2;
             var y = (screen.Height - height) / 2;
             Glfw.SetWindowPosition(window, x, y);
+
 
             return window;
         }
@@ -192,25 +189,14 @@ void main()
             var yCount = 12f;
             var xSize = xCount / 2f;
             var ySize = yCount / 2f;
-            var indexedVertices = new List<float[]>();
 
-            var indexedSquareVertices = new List<float[]>();
+            var indexedVertices = new List<float[]>();
 
             for (var i = 0; i < xCount; ++i)
             {
                 for (var j = 0; j < yCount; ++j)
                 {
                     indexedVertices.Add(new float[]
-                    {
-                        // bottom left
-                        (j / ySize) - 1f, (i / xSize) - 1f, 0f,
-                        // bottom right
-                        (j / ySize) - 1f, ((i + 1) / xSize) - 1f, 0f,
-                        // top left
-                        ((j + 1) / ySize) - 1f, (i / xSize) - 1f, 0f
-                    });
-
-                    indexedSquareVertices.Add(new float[]
                     {
                         // bottom left
                         (j / ySize) - 1f, (i / xSize) - 1f, 0f,
@@ -233,38 +219,24 @@ void main()
             var vertexArrays = glGenVertexArrays(indexedVertices.Count);
             var vertexBuffers = glGenBuffers(indexedVertices.Count);
 
-            var VAO = glGenVertexArrays(indexedSquareVertices.Count);
-            var VBO = glGenBuffers(indexedSquareVertices.Count);
-            var EBO = glGenBuffers(indexedSquareVertices.Count);
+            var VAO = glGenVertexArrays(indexedVertices.Count);
+            var VBO = glGenBuffers(indexedVertices.Count);
+            var EBO = glGenBuffers(indexedVertices.Count);
 
             var result = new List<VertexContainer>();
 
             // https://learnopengl.com/Getting-started/Hello-Triangle
             for (var i = 0; i < indexedVertices.Count; ++i)
             {
-                // Triangle
-                glBindVertexArray(vertexArrays[i]);
-
-                glBindBuffer(GL_ARRAY_BUFFER, vertexBuffers[i]);
-                var vertices = indexedVertices[i];
-                fixed (float* v = &vertices[0])
-                {
-                    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.Length, v, GL_STATIC_DRAW);
-                }
-
-                glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), NULL);
-                glEnableVertexAttribArray(0);
-
-                // Square
                 // 1. bind Vertex Array Object
                 glBindVertexArray(VAO[i]);
                 // 2. copy our vertices array in a vertex buffer for OpenGL to use
 
                 glBindBuffer(GL_ARRAY_BUFFER, VBO[i]);
-                var squareVertices = indexedSquareVertices[i];
-                fixed (float* v = &squareVertices[0])
+                var vertices = indexedVertices[i];
+                fixed (float* v = &vertices[0])
                 {
-                    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * squareVertices.Length, v, GL_STATIC_DRAW);
+                    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.Length, v, GL_STATIC_DRAW);
                 }
 
                 // 3. copy our index array in a element buffer for OpenGL to use
@@ -281,15 +253,12 @@ void main()
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
                 glBindVertexArray(0);
 
-                // Both
                 result.Add(new VertexContainer
                 {
-                    VertexArray = vertexArrays[i],
-                    VertexBuffer = vertexBuffers[i],
                     Color = GetRandomColor(),
-                    SquareElementBuffer = EBO[i],
-                    SquareVertexArray = VAO[i],
-                    SquareVertexBuffer = VBO[i],
+                    ElementBuffer = EBO[i],
+                    VertexArray = VAO[i],
+                    VertexBuffer = VBO[i],
                 });
             }
 
@@ -298,14 +267,9 @@ void main()
 
         private class VertexContainer
         {
-            // Triangle
+            public uint ElementBuffer { get; set; }
             public uint VertexArray { get; set; }
             public uint VertexBuffer { get; set; }
-
-            // Square
-            public uint SquareElementBuffer { get; set; }
-            public uint SquareVertexArray { get; set; }
-            public uint SquareVertexBuffer { get; set; }
 
             public float[] Color { get; set; } = default!;
         }
