@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 
-namespace Mivi.Console
+namespace Mivi.Core
 {
     public struct MidiNote
     {
         public readonly int MidiIndex;
-        public readonly string Note;
+        public readonly string? Note;
         public readonly int Octave;
 
         public MidiNote(int midiIndex, string note, int octave)

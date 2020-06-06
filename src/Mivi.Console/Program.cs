@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Commons.Music.Midi;
+using Mivi.Core;
 using SConsole = System.Console;
 
 namespace Mivi.Console
@@ -10,54 +11,28 @@ namespace Mivi.Console
     {
         public static async Task Main(string[] args)
         {
-            SConsole.WriteLine("Scanning inputs");
-
             var manager = MidiAccessManager.Default;
-
-            // foreach (var inputOption in manager.Inputs)
-            // {
-            //     SConsole.WriteLine($"Id           : {inputOption.Id}");
-            //     SConsole.WriteLine($"Manufacturer : {inputOption.Manufacturer}");
-            //     SConsole.WriteLine($"Name         : {inputOption.Name}");
-            //     SConsole.WriteLine($"Version      : {inputOption.Version}");
-            // }
-
             var singleInput = manager.Inputs.Single();
 
             SConsole.WriteLine($"Opening input {singleInput.Id}");
 
+            var stateManager = new StateManager();
             var input = await manager.OpenInputAsync(singleInput.Id);
-            input.MessageReceived += HandleMessage;
+            input.MessageReceived += stateManager.Consume;
 
-            SConsole.WriteLine("Waiting 10 second");
-            for (var i = 0; i < 10; ++i)
+            var windowMillis = 250;
+
+            for (var i = 0; i < 10_000 / windowMillis; ++i)
             {
-                await Task.Delay(1000);
-                SConsole.WriteLine(i + 1);
+                await Task.Delay(windowMillis);
+                var stateOutput = stateManager.Tick();
+                SConsole.WriteLine(stateOutput);
             }
 
             await input.CloseAsync();
-
-            // SConsole.WriteLine("Scanning outputs");
-            // foreach (var input in manager.Outputs)
-            // {
-            //     SConsole.WriteLine($"Id           : {input.Id}");
-            //     SConsole.WriteLine($"Manufacturer : {input.Manufacturer}");
-            //     SConsole.WriteLine($"Name         : {input.Name}");
-            //     SConsole.WriteLine($"Version      : {input.Version}");
-            // }
         }
 
-        // TODO look up the standard, I'm pretty sure it's:
-        //  - Clock signal occurs
-        //    - Any number of midi events occur
-        //      which describe all notes which were
-        //      active during the window
-        //  - Next clock signal occurs, closing the frame
-        // So I just need to setup a
-
-
-        private static void HandleMessage(object sender, MidiReceivedEventArgs args)
+        private static void HandleMessage(object? sender, MidiReceivedEventArgs args)
         {
             if (!args.Data.Any())
             {
@@ -76,8 +51,7 @@ namespace Mivi.Console
                     SConsole.WriteLine("EndSysEx");
                     break;
                 case MidiEvent.ActiveSense:
-                    // Eliminate noise
-                    // SConsole.WriteLine("ActiveSense");
+                    // Device-level message, irrelevant
                     break;
                 case MidiEvent.MidiStop:
                     SConsole.WriteLine("MidiStop");
@@ -117,7 +91,7 @@ namespace Mivi.Console
                     SConsole.WriteLine("Program");
                     break;
                 case MidiEvent.CC:
-                    SConsole.WriteLine("CC");
+                    SConsole.WriteLine("CC: Pedal");
                     break;
                 case MidiEvent.PAf:
                     SConsole.WriteLine("PAf");
