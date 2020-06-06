@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using GLFW;
+using Mivi.Core;
 using static OpenGL.Gl;
 
 namespace Mivi.Console
@@ -11,14 +12,22 @@ namespace Mivi.Console
     /// </summary>
     public class TriangleProgram
     {
-
         /// <summary>
         /// Obligatory name for your first OpenGL example program.
         /// </summary>
         private const string TITLE = "Hello Triangle!";
 
-        public static void EntryPoint(string[] args)
+        public static void EntryPoint(IMidiState state)
         {
+            // Set some common hints for the OpenGL profile creation
+            Glfw.WindowHint(Hint.ClientApi, ClientApi.OpenGL);
+            Glfw.WindowHint(Hint.ContextVersionMajor, 3);
+            Glfw.WindowHint(Hint.ContextVersionMinor, 3);
+            Glfw.WindowHint(Hint.OpenglProfile, Profile.Core);
+            Glfw.WindowHint(Hint.Doublebuffer, true);
+            Glfw.WindowHint(Hint.Decorated, true);
+            Glfw.WindowHint(Hint.OpenglForwardCompatible, true);
+
             // Set context creation hints
             PrepareContext();
             // Create a window and shader program
@@ -31,6 +40,8 @@ namespace Mivi.Console
             var location = glGetUniformLocation(program, "color");
 
             long n = 0;
+
+            var black = new[] { 0f, 0f, 0f };
 
             while (!Glfw.WindowShouldClose(window))
             {
@@ -45,13 +56,22 @@ namespace Mivi.Console
 
                 glUseProgram(program);
 
-                foreach (var x in vertexContainers)
+                var keys = state.GetKeyStates();
+
+                foreach (var (x, i) in vertexContainers.WithIndex())
                 {
-                    if (n % 60 == 0)
+                    // 8 rows of 12 on screen for 96 total
+                    // 88 keys on a piano
+                    // 8 entry offset
+                    var stateIndex = i + MidiNote.LowestPianoIndex;
+                    if (stateIndex > keys.Length)
                     {
-                        x.Color = GetRandomColor();
+                        continue;
                     }
-                    glUniform3f(location, x.Color[0], x.Color[1], x.Color[2]);
+
+                    var color = keys[stateIndex] == 0 ? black : x.Color;
+
+                    glUniform3f(location, color[0], color[1], color[2]);
 
                     glBindBuffer(GL_ARRAY_BUFFER, x.VertexBuffer);
                     glBindVertexArray(x.VertexArray);
@@ -148,45 +168,39 @@ namespace Mivi.Console
         /// <param name="vbo">The created vertex buffer object for the triangle.</param>
         private static unsafe List<VertexContainer> CreateVertices(int verticeSet)
         {
-
-            var vertices1 = new[] {
-                -0.5f, -0.5f, 0.0f,
-                0.5f, -0.5f, 0.0f,
-                0.0f,  0.5f, 0.0f
-            };
-            var vertices2 = new[] {
-                0.0f, 0.6f, 0.0f,
-                0.9f, 0.9f, 0.0f,
-                0.9f, -0.2f, 0.0f
-            };
-
-            var vertices3 = new[] {
-                -0.9f, -0.9f, 0.0f,
-                -0.9f, -0.6f, 0.0f,
-                -0.8f, -0.8f, 0.0f,
-            };
-            var vertices4 = new[] {
-                -0.9f, 0.9f, 0.0f,
-                -0.9f, 0.6f, 0.0f,
-                -0.8f, 0.8f, 0.0f,
-            };
-
-            var verticeses = new[]
+            // 8 rows of 12
+            var xCount = 8f;
+            var yCount = 12f;
+            var xSize = xCount / 2f;
+            var ySize = yCount / 2f;
+            var indexedVerticies = new List<float[]>();
+            for (var i = 0; i < xCount; ++i)
             {
-                vertices1, vertices2, vertices3, vertices4
-            };
+                for (var j = 0; j < yCount; ++j)
+                {
+                    indexedVerticies.Add(new float[]
+                    {
+                        // bottom left
+                        (j / ySize) - 1f, (i / xSize) - 1f, 0f,
+                        // bottom right
+                        (j / ySize) - 1f, ((i + 1) / xSize) - 1f, 0f,
+                        // top left
+                        ((j + 1) / ySize) - 1f, (i / xSize) - 1f, 0f
+                    });
+                }
+            }
 
-            var vertexArrays = glGenVertexArrays(4);
-            var vertexBuffers = glGenBuffers(4);
+            var vertexArrays = glGenVertexArrays(indexedVerticies.Count);
+            var vertexBuffers = glGenBuffers(indexedVerticies.Count);
 
             var result = new List<VertexContainer>();
 
-            for (var i = 0; i < 4; ++i)
+            for (var i = 0; i < indexedVerticies.Count; ++i)
             {
                 glBindVertexArray(vertexArrays[i]);
 
                 glBindBuffer(GL_ARRAY_BUFFER, vertexBuffers[i]);
-                var vertices = verticeses[i];
+                var vertices = indexedVerticies[i];
                 fixed (float* v = &vertices[0])
                 {
                     glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.Length, v, GL_STATIC_DRAW);

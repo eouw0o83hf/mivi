@@ -15,6 +15,9 @@ namespace Mivi.Core
             Octave = octave;
         }
 
+        public const int LowestPianoIndex = 21;
+        public const int HighestPianoIndex = 108;
+
         public static readonly IReadOnlyList<MidiNote> Notes = new[]
         {
             new MidiNote(0, "C", -2),

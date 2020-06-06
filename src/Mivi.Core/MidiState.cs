@@ -17,6 +17,7 @@ namespace Mivi.Core
     {
         void Consume(MidiReceivedEventArgs message);
         string Render();
+        int[] GetKeyStates();
         IMidiState Clone();
     }
 
@@ -55,7 +56,7 @@ namespace Mivi.Core
                         // var note = MidiNote.Notes[noteIndex];
                         // For key up, sometimes NoteOff is not
                         // sent, but instead NoteOn with velocity = 0
-                        _keyVelocities[noteIndex] += velocity;
+                        _keyVelocities[noteIndex] = velocity;
 
                         break;
                     }
@@ -68,6 +69,9 @@ namespace Mivi.Core
                     }
             }
         }
+
+        public int[] GetKeyStates()
+            => _keyVelocities.ToArray();
 
         public string Render()
             => new string(_keyVelocities

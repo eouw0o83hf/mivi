@@ -10,18 +10,19 @@ namespace Mivi.Console
 {
     public class Program
     {
-        public static void Main(string[] _)
+        public static async Task Main(string[] _)
         {
-            // Set some common hints for the OpenGL profile creation
-            Glfw.WindowHint(Hint.ClientApi, ClientApi.OpenGL);
-            Glfw.WindowHint(Hint.ContextVersionMajor, 3);
-            Glfw.WindowHint(Hint.ContextVersionMinor, 3);
-            Glfw.WindowHint(Hint.OpenglProfile, Profile.Core);
-            Glfw.WindowHint(Hint.Doublebuffer, true);
-            Glfw.WindowHint(Hint.Decorated, true);
-            Glfw.WindowHint(Hint.OpenglForwardCompatible, true);
 
-            TriangleProgram.EntryPoint(_);
+            var manager = MidiAccessManager.Default;
+            var singleInput = manager.Inputs.Single();
+
+            SConsole.WriteLine($"Opening input {singleInput.Id}");
+
+            var state = new MidiState();
+            var input = await manager.OpenInputAsync(singleInput.Id);
+            input.MessageReceived += (object? sender, MidiReceivedEventArgs args) => state.Consume(args);
+
+            TriangleProgram.EntryPoint(state);
         }
 
         public static async Task Main_Old(string[] args)
