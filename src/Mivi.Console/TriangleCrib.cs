@@ -26,11 +26,18 @@ namespace Mivi.Console
             var program = CreateProgram();
 
             // Define a simple triangle
-            var vertexContainers = CreateVertices();
-            rand = new Random();
+            var vertexContainers = CreateVertices(1);
 
             var location = glGetUniformLocation(program, "color");
-            SetRandomColor(location);
+            var color1 = GetRandomColor();
+            glUniform3f(location, color1[0], color1[1], color1[2]);
+
+            // var program2 = CreateProgram();
+            var containers2 = CreateVertices(2);
+            var location2 = glGetUniformLocation(program, "color2");
+            var color2 = GetRandomColor();
+            glUniform3f(location2, color2[0], color2[1], color2[2]);
+
             long n = 0;
 
             while (!Glfw.WindowShouldClose(window))
@@ -44,35 +51,50 @@ namespace Mivi.Console
 
                 ++n;
 
+                glUseProgram(program);
+
+                if (n % 60 == 0)
+                {
+                    color1 = GetRandomColor();
+                }
+                glUniform3f(location, color1[0], color1[1], color1[2]);
+
+
                 foreach (var x in vertexContainers)
                 {
+                    glBindBuffer(GL_ARRAY_BUFFER, x.VertexBuffer);
                     glBindVertexArray(x.VertexArray);
-                    if (n % 60 == 0)
-                    {
-                        SetRandomColor(location);
-                    }
                     glDrawArrays(GL_TRIANGLES, 0, 3);
                 }
+                // glClear(GL_COLOR_BUFFER_BIT);
 
+                // glUseProgram(program2);
 
-                // glBindVertexArray(vao)
+                if (n % 60 == 0)
+                {
+                    color2 = GetRandomColor();
+                }
+                glUniform3f(location, color2[0], color2[1], color2[2]);
 
-                // if (n++ % 60 == 0)
-                //     SetRandomColor(location);
-
-                // // Draw the triangle.
-                // glDrawArrays(GL_TRIANGLES, 0, 3);
+                foreach (var x in containers2)
+                {
+                    glBindBuffer(GL_ARRAY_BUFFER, x.VertexBuffer);
+                    glBindVertexArray(x.VertexArray);
+                    glDrawArrays(GL_TRIANGLES, 0, 3);
+                }
             }
 
             Glfw.Terminate();
         }
 
-        private static void SetRandomColor(int location)
+        private static readonly Random _random = new Random();
+
+        private static float[] GetRandomColor()
         {
-            var r = (float)rand.NextDouble();
-            var g = (float)rand.NextDouble();
-            var b = (float)rand.NextDouble();
-            glUniform3f(location, r, g, b);
+            var r = (float)_random.NextDouble();
+            var g = (float)_random.NextDouble();
+            var b = (float)_random.NextDouble();
+            return new[] { r, g, b };
         }
 
         private static void PrepareContext()
@@ -149,7 +171,7 @@ namespace Mivi.Console
         /// </summary>
         /// <param name="vao">The created vertex array object for the triangle.</param>
         /// <param name="vbo">The created vertex buffer object for the triangle.</param>
-        private static unsafe List<VertexContainer> CreateVertices()
+        private static unsafe List<VertexContainer> CreateVertices(int verticeSet)
         {
 
             var vertices1 = new[] {
@@ -163,9 +185,23 @@ namespace Mivi.Console
                 0.9f, -0.2f, 0.0f
             };
 
-            var verticeses = new[]
+            var vertices3 = new[] {
+                -0.9f, -0.9f, 0.0f,
+                -0.9f, -0.6f, 0.0f,
+                -0.8f, -0.8f, 0.0f,
+            };
+            var vertices4 = new[] {
+                -0.9f, 0.9f, 0.0f,
+                -0.9f, 0.6f, 0.0f,
+                -0.8f, 0.8f, 0.0f,
+            };
+
+            var verticeses = verticeSet == 1 ? new[]
             {
                 vertices1, vertices2
+            } : new[]
+            {
+                vertices3, vertices4
             };
 
             var vertexArrays = glGenVertexArrays(2);
@@ -211,8 +247,6 @@ namespace Mivi.Console
             // glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), NULL);
             // glEnableVertexAttribArray(0);
         }
-
-        private static Random rand;
 
         private class VertexContainer
         {
