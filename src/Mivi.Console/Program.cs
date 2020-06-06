@@ -14,13 +14,23 @@ namespace Mivi.Console
         {
 
             var manager = MidiAccessManager.Default;
-            var singleInput = manager.Inputs.Single();
 
-            SConsole.WriteLine($"Opening input {singleInput.Id}");
+            var singleInput = manager.Inputs.SingleOrDefault();
 
-            var state = new MidiState();
-            var input = await manager.OpenInputAsync(singleInput.Id);
-            input.MessageReceived += (object? sender, MidiReceivedEventArgs args) => state.Consume(args);
+            IMidiState state;
+            if (singleInput != null)
+            {
+                SConsole.WriteLine($"Opening input {singleInput.Id}");
+
+                state = new MidiState();
+                var input = await manager.OpenInputAsync(singleInput.Id);
+                input.MessageReceived += (object? sender, MidiReceivedEventArgs args) => state.Consume(args);
+            }
+            else
+            {
+                SConsole.WriteLine("No inputs found, using constant state");
+                state = new AlwaysOnMidiState();
+            }
 
             TriangleProgram.EntryPoint(state);
         }

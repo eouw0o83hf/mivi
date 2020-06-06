@@ -81,4 +81,23 @@ namespace Mivi.Core
                 .ToArray()
             );
     }
+
+    public class AlwaysOnMidiState : IMidiState
+    {
+        private static readonly int[] State = Enumerable
+            .Range(0, 128)
+            .Select(a => 128)
+            .ToArray();
+
+        public IMidiState Clone()
+            => this;
+
+        public void Consume(MidiReceivedEventArgs message) { }
+
+        public int[] GetKeyStates()
+            => State;
+
+        public string Render()
+            => "[fake input]";
+    }
 }

@@ -19,15 +19,6 @@ namespace Mivi.Console
 
         public static void EntryPoint(IMidiState state)
         {
-            // Set some common hints for the OpenGL profile creation
-            Glfw.WindowHint(Hint.ClientApi, ClientApi.OpenGL);
-            Glfw.WindowHint(Hint.ContextVersionMajor, 3);
-            Glfw.WindowHint(Hint.ContextVersionMinor, 3);
-            Glfw.WindowHint(Hint.OpenglProfile, Profile.Core);
-            Glfw.WindowHint(Hint.Doublebuffer, true);
-            Glfw.WindowHint(Hint.Decorated, true);
-            Glfw.WindowHint(Hint.OpenglForwardCompatible, true);
-
             // Set context creation hints
             PrepareContext();
             // Create a window and shader program
@@ -101,6 +92,7 @@ namespace Mivi.Console
             Glfw.WindowHint(Hint.OpenglProfile, Profile.Core);
             Glfw.WindowHint(Hint.Doublebuffer, true);
             Glfw.WindowHint(Hint.Decorated, true);
+            Glfw.WindowHint(Hint.OpenglForwardCompatible, true);
         }
 
         /// <summary>
@@ -125,14 +117,36 @@ namespace Mivi.Console
             return window;
         }
 
+        private const string TriangleVertexShader = @"
+#version 330 core
+layout (location = 0) in vec3 pos;
+
+void main()
+{
+    gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);
+}
+";
+
+        private const string TriangleFragmentShader = @"
+#version 330 core
+out vec4 result;
+
+uniform vec3 color;
+
+void main()
+{
+    result = vec4(color, 1.0);
+}
+";
+
         /// <summary>
         /// Creates an extremely basic shader program that is capable of displaying a triangle on screen.
         /// </summary>
         /// <returns>The created shader program. No error checking is performed for this basic example.</returns>
         private static uint CreateProgram()
         {
-            var vertex = CreateShader(GL_VERTEX_SHADER, File.ReadAllText("./triangle.vert"));
-            var fragment = CreateShader(GL_FRAGMENT_SHADER, File.ReadAllText("./triangle.frag"));
+            var vertex = CreateShader(GL_VERTEX_SHADER, TriangleVertexShader);
+            var fragment = CreateShader(GL_FRAGMENT_SHADER, TriangleFragmentShader);
 
             var program = glCreateProgram();
             glAttachShader(program, vertex);
