@@ -72,39 +72,30 @@ namespace Mivi.Console
 
                 foreach (var (x, i) in vertexContainers.WithIndex())
                 {
-                    var stateIndex = i + 13;
-
-                    var velocity = keys[stateIndex];
-                    var color = velocity == 0 ? black : x.Color;
+                    var velocity = keys[i + MidiNote.LowestPianoIndex];
+                    var defaultColor = new[]
+                    {
+                        .8f - (i * 0.3f / 88f),
+                        0.5f - (i / 176f),
+                        (i / 100f)
+                    };
+                    var color = velocity == 0 ? black : defaultColor;
 
                     glUniform3f(location, color[0], color[1], color[2]);
 
-
                     glBindVertexArray(x.VertexArray);
 
-                    // translate
-                    var xIndex = i % 12;
-                    var yIndex = i / 12;
-                    // translate to a different frame
-                    var xUnit = (float)(xIndex - 6) / 6f;
-                    var yUnit = (float)(yIndex - 4) / 4f;
-                    // center squares
-                    // xUnit += 1f / 24f;
-                    // yUnit += 1f / 16f;
-
                     // top two of the rightmost column
-                    translateMatrix[12] = xUnit; // x position
-                    translateMatrix[13] = yUnit; // y position
+                    translateMatrix[12] = KeyUnitWidth * i - 1f; // x position
+                    translateMatrix[13] = -1; // y position
                     glUniformMatrix4fv(translateLocation, 1, false, translateMatrix);
 
                     // transform
-                    var xUnitScale = 1f / 6f;
-                    var yUnitScale = 1f / 4f;
-                    var scale = ((float)velocity) / 128f;
+                    var scale = ((float)velocity) / 64f;
 
                     // down the diagonal
-                    transformationMatrix[0] = xUnitScale * scale;
-                    transformationMatrix[5] = yUnitScale * scale;
+                    transformationMatrix[0] = 1f; // x scale
+                    transformationMatrix[5] = scale; // y scale
                     glUniformMatrix4fv(transformLocation, 1, false, transformationMatrix);
 
 
@@ -252,6 +243,9 @@ void main()
             }
         }
 
+        // 2 because screenspace is a [-1, -1], [1, 1] square
+        const float KeyUnitWidth = 2f / 88f;
+
         /// <summary>
         /// Creates a VBO and VAO to store the vertices for a triangle.
         /// </summary>
@@ -259,13 +253,12 @@ void main()
         /// <param name="vbo">The created vertex buffer object for the triangle.</param>
         private static unsafe List<VertexContainer> CreateVertices(int verticeSet)
         {
-
             var indexedVertices = Enumerable
-                .Range(0, 8 * 12)
+                .Range(0, 88)
                 .Select(a => new float[]
                 {
-                    1.0f, 1.0f, 0.0f, // top right
-                    1.0f, 0.0f, 0.0f, // bottom right
+                    KeyUnitWidth, 1.0f, 0.0f, // top right
+                    KeyUnitWidth, 0.0f, 0.0f, // bottom right
                     0.0f, 0.0f, 0.0f, // bottom left
                     0.0f, 1.0f, 0.0f  // top left
                 })
