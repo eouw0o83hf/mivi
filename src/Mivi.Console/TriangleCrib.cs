@@ -91,11 +91,9 @@ namespace Mivi.Console
                     glUniformMatrix4fv(translateLocation, 1, false, translateMatrix);
 
                     // transform
-                    var scale = ((float)velocity) / 64f;
-
                     // down the diagonal
                     transformationMatrix[0] = 1f; // x scale
-                    transformationMatrix[5] = scale; // y scale
+                    transformationMatrix[5] = scaleVolume(velocity); // y scale
                     glUniformMatrix4fv(transformLocation, 1, false, transformationMatrix);
 
 
@@ -105,6 +103,19 @@ namespace Mivi.Console
 
             Glfw.Terminate();
         }
+
+        // Nothing special, just something that
+        // looked good on this graphing calculator
+        // https://www.geogebra.org/graphing?lang=en
+        // Maps from [0, 128] to [0, 2]
+        private static float scaleVolume(float midiVelocity)
+            => 2.05f /
+                (1f + (float)Math.Exp(
+                    -(
+                        (midiVelocity - 46f) / 7f
+                    )
+                ))
+                - .05f;
 
         private static readonly Random _random = new Random();
 
