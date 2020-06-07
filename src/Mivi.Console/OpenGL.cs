@@ -1,3 +1,8 @@
+// Cribbed from glfw-net
+// Warning disables added and some
+// non-resolving delegates commented
+// out near end of file
+
 using System;
 using System.Linq;
 using System.Runtime.InteropServices;

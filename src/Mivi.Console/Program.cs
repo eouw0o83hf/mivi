@@ -20,10 +20,16 @@ namespace Mivi.Console
             if (singleInput != null)
             {
                 SConsole.WriteLine($"Opening input {singleInput.Id}");
-
-                state = new MidiState();
                 var input = await manager.OpenInputAsync(singleInput.Id);
-                input.MessageReceived += (object? sender, MidiReceivedEventArgs args) => state.Consume(args);
+
+                var eventBus = new EventBus();
+                var adapter = new MidiBusAdapter(eventBus, input);
+                while (true)
+                {
+                    await Task.Delay(1000);
+                }
+                // state = new MidiState();
+                // input.MessageReceived += (object? sender, MidiReceivedEventArgs args) => state.Consume(args);
             }
             else
             {
