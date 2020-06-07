@@ -2,7 +2,11 @@
 
 Musical Instrument Video Interface
 
-Visualization for keyboard via midi
+A cross-platform MIDI visualizer. Written in C# on dotnet core, using OpenGL for rendering.
+
+Example visualization
+
+![fur elise](https://user-images.githubusercontent.com/2204030/83962879-ecba8a00-a866-11ea-97cf-dbe77f93d150.gif)
 
 ## Libraries / Technologies
 
