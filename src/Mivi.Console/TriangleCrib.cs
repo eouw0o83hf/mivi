@@ -279,7 +279,6 @@ void main()
 
             var result = new List<VertexContainer>();
 
-            // https://learnopengl.com/Getting-started/Hello-Triangle
             for (var i = 0; i < indexedVertices.Count; ++i)
             {
                 // 1. bind Vertex Array Object
