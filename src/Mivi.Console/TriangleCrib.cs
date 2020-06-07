@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using GLFW;
 using Mivi.Core;
 using static OpenGL.Gl;
+using Exception = System.Exception;
 
 namespace Mivi.Console
 {
@@ -34,7 +36,25 @@ namespace Mivi.Console
 
             var black = new[] { 0f, 0f, 0f };
 
+            var translateLocation = glGetUniformLocation(program, "translate");
+            // identity, just set x and y
+            var translateMatrix = new[]
+            {
+                1.0f, 0f, 0f, 0f,
+                0f, 1.0f, 0f, 0f,
+                0f, 0f, 1.0f, 0f,
+                0f, 0f, 0f, 1.0f
+            };
 
+            var transformLocation = glGetUniformLocation(program, "transform");
+            var transformationMatrix = new[]
+            {
+                0.1f, 0f, 0f, 0f,
+                0f, 0.1f, 0f, 0f,
+                0f, 0f, 0.1f, 0f,
+                0f, 0f, 0f, 1.0f
+            };
+            glUniformMatrix4fv(transformLocation, 1, false, transformationMatrix);
 
             while (!Glfw.WindowShouldClose(window))
             {
@@ -66,7 +86,19 @@ namespace Mivi.Console
 
                     glUniform3f(location, color[0], color[1], color[2]);
 
+
                     glBindVertexArray(x.VertexArray);
+
+                    var xIndex = i % 12;
+                    var yIndex = i / 12;
+                    var xUnit = (float)(xIndex - 6) / 6f;
+                    var yUnit = (float)(yIndex - 4) / 4f;
+
+                    translateMatrix[12] = xUnit; // x position
+                    translateMatrix[13] = yUnit; // y position
+                    glUniformMatrix4fv(translateLocation, 1, false, translateMatrix);
+
+
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
                 }
             }
@@ -115,17 +147,20 @@ namespace Mivi.Console
             var y = (screen.Height - height) / 2;
             Glfw.SetWindowPosition(window, x, y);
 
-
             return window;
         }
 
         private const string TriangleVertexShader = @"
 #version 330 core
+
 layout (location = 0) in vec3 pos;
+
+uniform mat4 transform;
+uniform mat4 translate;
 
 void main()
 {
-    gl_Position = vec4(pos.x, pos.y, pos.z, 1.0);
+    gl_Position = translate * transform * vec4(pos, 1.0);
 }
 ";
 
@@ -156,6 +191,8 @@ void main()
 
             glLinkProgram(program);
 
+            checkCompileErrors(program, true);
+
             glDeleteShader(vertex);
             glDeleteShader(fragment);
 
@@ -174,7 +211,30 @@ void main()
             var shader = glCreateShader(type);
             glShaderSource(shader, source);
             glCompileShader(shader);
+            checkCompileErrors(shader, false);
             return shader;
+        }
+
+        private static void checkCompileErrors(uint shader, bool isProgram)
+        {
+            if (!isProgram)
+            {
+                var errors = glGetShaderiv(shader, GL_COMPILE_STATUS, 1);
+                if (errors[0] == 0)
+                {
+                    var message = glGetShaderInfoLog(shader, 1024);
+                    throw new Exception("Error compiling: " + message);
+                }
+            }
+            else
+            {
+                var errors = glGetProgramiv(shader, GL_LINK_STATUS, 1);
+                if (errors[0] == 0)
+                {
+                    var message = glGetProgramInfoLog(shader, 1024);
+                    throw new Exception("Error linking: " + message);
+                }
+            }
         }
 
         /// <summary>
@@ -184,6 +244,19 @@ void main()
         /// <param name="vbo">The created vertex buffer object for the triangle.</param>
         private static unsafe List<VertexContainer> CreateVertices(int verticeSet)
         {
+
+            // var indexedVertices = Enumerable
+            //     .Range(0, 8 * 12)
+            //     .Select(a => new float[]
+            //     {
+            //         1.0f, 1.0f, 0.0f, // top right
+            //         1.0f, 0.0f, 0.0f, // bottom right
+            //         0.0f, 0.0f, 0.0f, // bottom left
+            //         0.0f, 1.0f, 0.0f  // top left
+            //     })
+            //     .ToList();
+
+
             // 8 rows of 12
             var xCount = 8f;
             var yCount = 12f;
