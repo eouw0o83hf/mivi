@@ -12,7 +12,6 @@ namespace Mivi.Console
     {
         public static async Task Main(string[] _)
         {
-
             var manager = MidiAccessManager.Default;
 
             var singleInput = manager.Inputs.SingleOrDefault();
@@ -30,34 +29,23 @@ namespace Mivi.Console
             {
                 SConsole.WriteLine("No inputs found, using constant state");
                 state = new CrescendoMidiState();
+                new Task(async () =>
+                {
+                    while (true)
+                    {
+                        await Task.Delay(10);
+                        state.Consume(new MidiReceivedEventArgs
+                        {
+                            Data = new byte[] { MidiEvent.MidiClock }
+                        });
+                    }
+                });
             }
 
             TriangleProgram.EntryPoint(state);
         }
 
-        public static async Task Main_Old(string[] args)
-        {
-            var manager = MidiAccessManager.Default;
-            var singleInput = manager.Inputs.Single();
-
-            SConsole.WriteLine($"Opening input {singleInput.Id}");
-
-            var stateManager = new StateManager();
-            var input = await manager.OpenInputAsync(singleInput.Id);
-            input.MessageReceived += stateManager.Consume;
-
-            var windowMillis = 250;
-
-            for (var i = 0; i < 10_000 / windowMillis; ++i)
-            {
-                await Task.Delay(windowMillis);
-                var stateOutput = stateManager.Tick();
-                SConsole.WriteLine(stateOutput);
-            }
-
-            await input.CloseAsync();
-        }
-
+        [Obsolete]
         private static void HandleMessage(object? sender, MidiReceivedEventArgs args)
         {
             if (!args.Data.Any())

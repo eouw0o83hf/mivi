@@ -17,7 +17,7 @@ namespace Mivi.Console
         /// <summary>
         /// Obligatory name for your first OpenGL example program.
         /// </summary>
-        private const string TITLE = "Hello Triangle!";
+        private const string TITLE = "eouw0o83hf MIVI";
 
         public static unsafe void EntryPoint(IMidiState state)
         {
@@ -79,7 +79,7 @@ namespace Mivi.Console
                         0.5f - (i / 176f),
                         (i / 100f)
                     };
-                    var color = velocity == 0 ? black : defaultColor;
+                    var color = velocity <= 0.001f ? black : defaultColor;
 
                     glUniform3f(location, color[0], color[1], color[2]);
 
