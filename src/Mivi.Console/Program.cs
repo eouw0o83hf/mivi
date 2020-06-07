@@ -29,7 +29,7 @@ namespace Mivi.Console
             else
             {
                 SConsole.WriteLine("No inputs found, using constant state");
-                state = new AlwaysOnMidiState();
+                state = new CrescendoMidiState();
             }
 
             TriangleProgram.EntryPoint(state);

@@ -82,12 +82,21 @@ namespace Mivi.Core
             );
     }
 
-    public class AlwaysOnMidiState : IMidiState
+    public class AlwaysOnMidiState : StaticMidiStateBase
     {
-        private static readonly int[] State = Enumerable
+        protected override IEnumerable<int> stateGenerator => Enumerable
             .Range(0, 128)
-            .Select(a => 128)
-            .ToArray();
+            .Select(a => 128);
+    }
+
+    public class CrescendoMidiState : StaticMidiStateBase
+    {
+        protected override IEnumerable<int> stateGenerator => Enumerable.Range(0, 128);
+    }
+
+    public abstract class StaticMidiStateBase : IMidiState
+    {
+        protected abstract IEnumerable<int> stateGenerator { get; }
 
         public IMidiState Clone()
             => this;
@@ -95,7 +104,7 @@ namespace Mivi.Core
         public void Consume(MidiReceivedEventArgs message) { }
 
         public int[] GetKeyStates()
-            => State;
+            => stateGenerator.ToArray();
 
         public string Render()
             => "[fake input]";

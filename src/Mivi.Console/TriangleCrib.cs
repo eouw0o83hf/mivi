@@ -49,12 +49,11 @@ namespace Mivi.Console
             var transformLocation = glGetUniformLocation(program, "transform");
             var transformationMatrix = new[]
             {
-                0.1f, 0f, 0f, 0f,
-                0f, 0.1f, 0f, 0f,
-                0f, 0f, 0.1f, 0f,
+                1.0f, 0f, 0f, 0f,
+                0f, 1.0f, 0f, 0f,
+                0f, 0f, 1.0f, 0f,
                 0f, 0f, 0f, 1.0f
             };
-            glUniformMatrix4fv(transformLocation, 1, false, transformationMatrix);
 
             while (!Glfw.WindowShouldClose(window))
             {
@@ -73,30 +72,40 @@ namespace Mivi.Console
 
                 foreach (var (x, i) in vertexContainers.WithIndex())
                 {
-                    // 8 rows of 12 on screen for 96 total
-                    // 88 keys on a piano
-                    // 8 entry offset
-                    var stateIndex = i + MidiNote.LowestPianoIndex;
-                    if (stateIndex > keys.Length)
-                    {
-                        continue;
-                    }
+                    var stateIndex = i + 13;
 
-                    var color = keys[stateIndex] == 0 ? black : x.Color;
+                    var velocity = keys[stateIndex];
+                    var color = velocity == 0 ? black : x.Color;
 
                     glUniform3f(location, color[0], color[1], color[2]);
 
 
                     glBindVertexArray(x.VertexArray);
 
+                    // translate
                     var xIndex = i % 12;
                     var yIndex = i / 12;
+                    // translate to a different frame
                     var xUnit = (float)(xIndex - 6) / 6f;
                     var yUnit = (float)(yIndex - 4) / 4f;
+                    // center squares
+                    // xUnit += 1f / 24f;
+                    // yUnit += 1f / 16f;
 
+                    // top two of the rightmost column
                     translateMatrix[12] = xUnit; // x position
                     translateMatrix[13] = yUnit; // y position
                     glUniformMatrix4fv(translateLocation, 1, false, translateMatrix);
+
+                    // transform
+                    var xUnitScale = 1f / 6f;
+                    var yUnitScale = 1f / 4f;
+                    var scale = ((float)velocity) / 128f;
+
+                    // down the diagonal
+                    transformationMatrix[0] = xUnitScale * scale;
+                    transformationMatrix[5] = yUnitScale * scale;
+                    glUniformMatrix4fv(transformLocation, 1, false, transformationMatrix);
 
 
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
@@ -160,7 +169,13 @@ uniform mat4 translate;
 
 void main()
 {
-    gl_Position = translate * transform * vec4(pos, 1.0);
+    mat4 composit = translate * transform;
+    gl_Position = composit * vec4(pos, 1.0);
+
+    // vec4 asdf = translate * vec4(pos, 1.0);
+    // gl_Position = transform * asdf;
+
+    // gl_Position = translate * transform * vec4(pos, 1.0);
 }
 ";
 
@@ -245,43 +260,16 @@ void main()
         private static unsafe List<VertexContainer> CreateVertices(int verticeSet)
         {
 
-            // var indexedVertices = Enumerable
-            //     .Range(0, 8 * 12)
-            //     .Select(a => new float[]
-            //     {
-            //         1.0f, 1.0f, 0.0f, // top right
-            //         1.0f, 0.0f, 0.0f, // bottom right
-            //         0.0f, 0.0f, 0.0f, // bottom left
-            //         0.0f, 1.0f, 0.0f  // top left
-            //     })
-            //     .ToList();
-
-
-            // 8 rows of 12
-            var xCount = 8f;
-            var yCount = 12f;
-            var xSize = xCount / 2f;
-            var ySize = yCount / 2f;
-
-            var indexedVertices = new List<float[]>();
-
-            for (var i = 0; i < xCount; ++i)
-            {
-                for (var j = 0; j < yCount; ++j)
+            var indexedVertices = Enumerable
+                .Range(0, 8 * 12)
+                .Select(a => new float[]
                 {
-                    indexedVertices.Add(new float[]
-                    {
-                        // bottom left
-                        (j / ySize) - 1f, (i / xSize) - 1f, 0f,
-                        // bottom right
-                        (j / ySize) - 1f, ((i + 1) / xSize) - 1f, 0f,
-                        // top right
-                        ((j + 1) / ySize) - 1f, ((i + 1) / xSize) - 1f, 0f,
-                        // top left
-                        ((j + 1) / ySize) - 1f, (i / xSize) - 1f, 0f
-                    });
-                }
-            }
+                    1.0f, 1.0f, 0.0f, // top right
+                    1.0f, 0.0f, 0.0f, // bottom right
+                    0.0f, 0.0f, 0.0f, // bottom left
+                    0.0f, 1.0f, 0.0f  // top left
+                })
+                .ToList();
 
             var squareIndices = new uint[]
             {
