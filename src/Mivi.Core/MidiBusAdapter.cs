@@ -36,7 +36,6 @@ namespace Mivi.Core
             var converted = ConvertToMidiEvent(message);
             if (converted != null)
             {
-                Console.WriteLine($"Published {converted.GetType().Name}");
                 _eventBus.Publish(converted);
             }
         }
@@ -71,23 +70,34 @@ namespace Mivi.Core
                         return new KeyReleased(keyIndex);
                     }
 
-                // sustain pedal
                 case MidiEvent.CC:
                     {
                         var pedalId = data[1];
                         var position = data[2];
 
-                        // https://nickfever.com/Music/midi-cc-list
-                        var pedalString = pedalId switch
+                        switch (pedalId)
                         {
-                            64 => "damper / sustain",
-                            65 => "portamento",
-                            66 => "sostenuto",
-                            67 => "soft pedal",
-                            _ => $"other [{pedalId}]"
-                        };
+                            case 64:
+                                if (position > 0)
+                                {
+                                    return new SustainPedalPressed();
+                                }
+                                return new SustainPedalReleased();
 
-                        Console.WriteLine($"Pedal: [{pedalString}] is at [{position}]");
+                            case 66:
+                                if (position > 0)
+                                {
+                                    return new SostenutoPedalPressed();
+                                }
+                                return new SostenutoPedalReleased();
+
+                            case 67:
+                                if (position > 0)
+                                {
+                                    return new SoftPedalPressed();
+                                }
+                                return new SoftPedalReleased();
+                        }
 
                         break;
                     }

@@ -22,8 +22,14 @@ namespace Mivi.Core.MidiEvents
         }
     }
 
-    public class PedalPressed { }
-    public class PedalReleased { }
+    public class SustainPedalPressed { }
+    public class SustainPedalReleased { }
+
+    public class SostenutoPedalPressed { }
+    public class SostenutoPedalReleased { }
+
+    public class SoftPedalPressed { }
+    public class SoftPedalReleased { }
 
     public class ClockTicked { }
 }
