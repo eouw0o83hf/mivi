@@ -19,7 +19,7 @@ namespace Mivi.Console
         /// </summary>
         private const string TITLE = "eouw0o83hf MIVI";
 
-        public static unsafe void EntryPoint(IMidiState state)
+        public static unsafe void EntryPoint(SharedState state)
         {
             // Set context creation hints
             PrepareContext();
@@ -68,7 +68,7 @@ namespace Mivi.Console
 
                 glUseProgram(program);
 
-                var keys = state.GetKeyStates();
+                var keys = state.NoteVelocities;
 
                 foreach (var (x, i) in vertexContainers.WithIndex())
                 {

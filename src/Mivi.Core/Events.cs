@@ -1,4 +1,4 @@
-namespace Mivi.Core.MidiEvents
+namespace Mivi.Core
 {
     public class KeyPressed
     {

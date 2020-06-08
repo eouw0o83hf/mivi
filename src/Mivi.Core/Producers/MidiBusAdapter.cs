@@ -1,9 +1,8 @@
 using System;
 using System.Linq;
 using Commons.Music.Midi;
-using Mivi.Core.MidiEvents;
 
-namespace Mivi.Core
+namespace Mivi.Core.Producers
 {
     /// <summary>
     /// Receives input from a MIDI bus
@@ -70,6 +69,7 @@ namespace Mivi.Core
                         return new KeyReleased(keyIndex);
                     }
 
+                // Helpful: https://www.midi.org/specifications-old/item/table-1-summary-of-midi-message
                 case MidiEvent.CC:
                     {
                         var pedalId = data[1];

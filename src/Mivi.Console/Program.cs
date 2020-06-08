@@ -1,7 +1,11 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
+using System.Timers;
 using Commons.Music.Midi;
 using Mivi.Core;
+using Mivi.Core.Consumers;
+using Mivi.Core.Producers;
 using SConsole = System.Console;
 
 namespace Mivi.Console
@@ -10,40 +14,45 @@ namespace Mivi.Console
     {
         public static async Task Main(string[] _)
         {
+            // Composition root singletons
+            var state = new SharedState();
+            var eventBus = new EventBus();
+
+            // Event bus producers
+            var clockTickProducer = new ClockTickProducer(eventBus);
+
+            // Event bus consumers
+            var consumer = new NoteVolumeConsumer(state);
+            eventBus.RegisterConsumer(consumer);
+
+            // Low-level MIDI wire-up
             var manager = MidiAccessManager.Default;
+            var midiInput = manager.Inputs.SingleOrDefault();
 
-            var singleInput = manager.Inputs.SingleOrDefault();
-
-            IMidiState state;
-            if (singleInput != null)
+            // Determine MIDI producer based on physical device presence
+            if (midiInput != null)
             {
-                SConsole.WriteLine($"Opening input {singleInput.Id}");
-                var input = await manager.OpenInputAsync(singleInput.Id);
+                SConsole.WriteLine($"Opening input {midiInput.Id}");
+                var input = await manager.OpenInputAsync(midiInput.Id);
 
-                var eventBus = new EventBus();
                 var adapter = new MidiBusAdapter(eventBus, input);
-                while (true)
-                {
-                    await Task.Delay(1000);
-                }
-                // state = new MidiState();
-                // input.MessageReceived += (object? sender, MidiReceivedEventArgs args) => state.Consume(args);
             }
             else
             {
-                SConsole.WriteLine("No inputs found, using constant state");
-                state = new CrescendoMidiState();
-                new Task(async () =>
-                {
-                    while (true)
-                    {
-                        await Task.Delay(10);
-                        state.Consume(new MidiReceivedEventArgs
-                        {
-                            Data = new byte[] { MidiEvent.MidiClock }
-                        });
-                    }
-                });
+                throw new Exception("Yo you need to implement the FIDI keyboard input dawg");
+                // SConsole.WriteLine("No inputs found, using constant state");
+                // state = new CrescendoMidiState();
+                // new Task(async () =>
+                // {
+                //     while (true)
+                //     {
+                //         await Task.Delay(10);
+                //         state.Consume(new MidiReceivedEventArgs
+                //         {
+                //             Data = new byte[] { MidiEvent.MidiClock }
+                //         });
+                //     }
+                // });
             }
 
             TriangleProgram.EntryPoint(state);
