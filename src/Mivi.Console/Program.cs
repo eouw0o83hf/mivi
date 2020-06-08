@@ -39,20 +39,9 @@ namespace Mivi.Console
             }
             else
             {
-                throw new Exception("Yo you need to implement the FIDI keyboard input dawg");
-                // SConsole.WriteLine("No inputs found, using constant state");
-                // state = new CrescendoMidiState();
-                // new Task(async () =>
-                // {
-                //     while (true)
-                //     {
-                //         await Task.Delay(10);
-                //         state.Consume(new MidiReceivedEventArgs
-                //         {
-                //             Data = new byte[] { MidiEvent.MidiClock }
-                //         });
-                //     }
-                // });
+                SConsole.WriteLine("No inputs found, using random state");
+
+                var producer = new RandomInputProducer(eventBus);
             }
 
             TriangleProgram.EntryPoint(state);
