@@ -3,19 +3,18 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
-    <PropertyGroup>
-      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    </PropertyGroup>
-
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
   <PropertyGroup>
     <LangVersion>8.0</LangVersion>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="managed-midi" Version="1.9.14" />
+    <PackageReference Include="managed-midi" Version="1.9.14"/>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Mivi.Core\Mivi.Core.csproj" />
-    <ProjectReference Include="..\glfw-net\GLFW.NET\GLFW.NET.csproj" />
+    <ProjectReference Include="..\Mivi.Core\Mivi.Core.csproj"/>
+    <ProjectReference Include="..\glfw-net\GLFW.NET\GLFW.NET.csproj"/>
   </ItemGroup>
 </Project>

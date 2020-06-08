@@ -1,7 +1,5 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
-using System.Timers;
 using Commons.Music.Midi;
 using Mivi.Core;
 using Mivi.Core.Consumers;
@@ -39,8 +37,7 @@ namespace Mivi.Console
             }
             else
             {
-                SConsole.WriteLine("No inputs found, using random state");
-
+                SConsole.WriteLine("No MIDI devices found, using random input");
                 var producer = new RandomInputProducer(eventBus);
             }
 

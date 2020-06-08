@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GLFW;
+using GlmNet;
 using Mivi.Core;
 using static OpenGL.Gl;
 using Exception = System.Exception;
@@ -30,30 +31,24 @@ namespace Mivi.Console
             // Define a simple triangle
             var vertexContainers = CreateVertices(1);
 
-            var location = glGetUniformLocation(program, "color");
-
-            long n = 0;
+            var colorLocation = glGetUniformLocation(program, "color");
 
             var black = new[] { 0f, 0f, 0f };
 
-            var translateLocation = glGetUniformLocation(program, "translate");
-            // identity, just set x and y
-            var translateMatrix = new[]
-            {
-                1.0f, 0f, 0f, 0f,
-                0f, 1.0f, 0f, 0f,
-                0f, 0f, 1.0f, 0f,
-                0f, 0f, 0f, 1.0f
-            };
+            // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
+            // glm::mat4 Projection = glm::perspective(glm::radians(45.0f), (float) width / (float)height, 0.1f, 100.0f);
+            var projectionMatrix = glm.perspective(
+                glm.radians(45f),
+                1f, 0.1f, 100f
+            );
 
-            var transformLocation = glGetUniformLocation(program, "transform");
-            var transformationMatrix = new[]
-            {
-                1.0f, 0f, 0f, 0f,
-                0f, 1.0f, 0f, 0f,
-                0f, 0f, 1.0f, 0f,
-                0f, 0f, 0f, 1.0f
-            };
+            var viewMatrix = glm.lookAt(
+               new vec3(0f, 1f, 2.5f),
+               new vec3(0, 0.2f, 0),
+               new vec3(0, 1, 0)
+           );
+
+            var mvpMatrixLocation = glGetUniformLocation(program, "mvp");
 
             while (!Glfw.WindowShouldClose(window))
             {
@@ -63,8 +58,6 @@ namespace Mivi.Console
 
                 // Clear the framebuffer to defined background color
                 glClear(GL_COLOR_BUFFER_BIT);
-
-                ++n;
 
                 glUseProgram(program);
 
@@ -81,21 +74,27 @@ namespace Mivi.Console
                     };
                     var color = velocity <= 0.001f ? black : defaultColor;
 
-                    glUniform3f(location, color[0], color[1], color[2]);
+                    glUniform3f(colorLocation, color[0], color[1], color[2]);
 
                     glBindVertexArray(x.VertexArray);
 
                     // top two of the rightmost column
-                    translateMatrix[12] = KeyUnitWidth * i - 1f; // x position
-                    translateMatrix[13] = -1; // y position
-                    glUniformMatrix4fv(translateLocation, 1, false, translateMatrix);
+                    var translateMatrix = new mat4(1.0f);
+                    translateMatrix[3, 0] = KeyUnitWidth * i - 1f; // x position
+                    translateMatrix[3, 1] = -1; // y position
 
-                    // transform
-                    // down the diagonal
-                    transformationMatrix[0] = 1f; // x scale
-                    transformationMatrix[5] = scaleVolume(velocity); // y scale
-                    glUniformMatrix4fv(transformLocation, 1, false, transformationMatrix);
+                    var rotationMatrix = new mat4(1.0f);
 
+                    var scaleMatrix = new mat4(1.0f);
+                    scaleMatrix[0, 0] = 1f; // x scale
+                    scaleMatrix[1, 1] = scaleVolume(velocity); // y scale
+                    scaleMatrix[2, 2] = scaleVolume(velocity); // z scale
+
+                    var modelMatrix = translateMatrix * rotationMatrix * scaleMatrix;
+
+                    var mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
+
+                    glUniformMatrix4fv(mvpMatrixLocation, 1, false, mvpMatrix.to_array());
 
                     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
                 }
@@ -104,18 +103,8 @@ namespace Mivi.Console
             Glfw.Terminate();
         }
 
-        // Nothing special, just something that
-        // looked good on this graphing calculator
-        // https://www.geogebra.org/graphing?lang=en
-        // Maps from [0, 128] to [0, 2]
-        private static float scaleVolume(float midiVelocity)
-            => 2.05f /
-                (1f + (float)Math.Exp(
-                    -(
-                        (midiVelocity - 46f) / 7f
-                    )
-                ))
-                - .05f;
+        // This should probably be logarithmic
+        private static float scaleVolume(float midiVelocity) => midiVelocity / 64f;
 
         private static readonly Random _random = new Random();
 
@@ -166,18 +155,11 @@ namespace Mivi.Console
 
 layout (location = 0) in vec3 pos;
 
-uniform mat4 transform;
-uniform mat4 translate;
+uniform mat4 mvp;
 
 void main()
 {
-    mat4 composit = translate * transform;
-    gl_Position = composit * vec4(pos, 1.0);
-
-    // vec4 asdf = translate * vec4(pos, 1.0);
-    // gl_Position = transform * asdf;
-
-    // gl_Position = translate * transform * vec4(pos, 1.0);
+    gl_Position = mvp * vec4(pos, 1.0);
 }
 ";
 
@@ -268,17 +250,45 @@ void main()
                 .Range(0, 88)
                 .Select(a => new float[]
                 {
+                    // front face
                     KeyUnitWidth, 1.0f, 0.0f, // top right
                     KeyUnitWidth, 0.0f, 0.0f, // bottom right
                     0.0f, 0.0f, 0.0f, // bottom left
-                    0.0f, 1.0f, 0.0f  // top left
+                    0.0f, 1.0f, 0.0f,  // top left
+
+                    // rear face
+                    KeyUnitWidth, 1.0f, -1.0f, // top right
+                    KeyUnitWidth, 0.0f, -1.0f, // bottom right
+                    0.0f, 0.0f, -1.0f, // bottom left
+                    0.0f, 1.0f, -1.0f  // top left
                 })
                 .ToList();
 
             var squareIndices = new uint[]
             {
-                0, 1, 3,    // triangle 1
-                1, 2, 3     // triangle 2
+                // front face
+                0, 1, 2,    // triangle 1
+                0, 3, 2,    // triangle 2
+
+                // rear face
+                4, 5, 6,
+                4, 7, 6,
+
+                // top face
+                0, 4, 7,
+                0, 3, 7,
+
+                // bottom face
+                1, 5, 6,
+                1, 2, 6,
+
+                // left face
+                2, 3, 6,
+                2, 7, 6,
+
+                // right face
+                0, 1, 5,
+                0, 4, 5
             };
 
             var vertexArrays = glGenVertexArrays(indexedVertices.Count);
