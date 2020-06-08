@@ -3,5 +3,6 @@
     "Glfw",
     "Mivi"
   ],
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "cSpell.enabled": false
 }
