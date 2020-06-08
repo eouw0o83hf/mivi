@@ -9,7 +9,6 @@ namespace Mivi.Core.Consumers
         private readonly bool[] _actualKeyFreshBits = new bool[128];
 
         private bool _softOn = false;
-        private bool _sustainOn = false;
 
         private readonly SharedState _state;
 
@@ -41,11 +40,11 @@ namespace Mivi.Core.Consumers
                     break;
 
                 case SustainPedalPressed _:
-                    _sustainOn = true;
+                    _state.SustainPedalOn = true;
                     break;
 
                 case SustainPedalReleased _:
-                    _sustainOn = false;
+                    _state.SustainPedalOn = false;
                     break;
 
                 case SoftPedalPressed _:
@@ -72,7 +71,7 @@ namespace Mivi.Core.Consumers
                         if (_actualKeyVelocities[i] > 0.01f)
                         {
                             // The key is still being held down
-                            if (_sustainOn)
+                            if (_state.SustainPedalOn)
                             {
                                 // All of the resonance
                                 attenuationFactor = 0.998f;
@@ -83,7 +82,7 @@ namespace Mivi.Core.Consumers
                                 attenuationFactor = 0.9979f;
                             }
                         }
-                        else if (_sustainOn)
+                        else if (_state.SustainPedalOn)
                         {
                             // Key was lifted but sustain pedal is on,
                             // so slow attenuation

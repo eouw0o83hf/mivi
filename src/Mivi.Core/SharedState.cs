@@ -11,5 +11,7 @@ namespace Mivi.Core
     public class SharedState
     {
         public readonly float[] NoteVelocities = new float[128];
+
+        public bool SustainPedalOn = false;
     }
 }

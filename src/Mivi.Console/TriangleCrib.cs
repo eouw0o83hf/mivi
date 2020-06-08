@@ -33,8 +33,6 @@ namespace Mivi.Console
 
             var colorLocation = glGetUniformLocation(program, "color");
 
-            var black = new[] { 0f, 0f, 0f };
-
             // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
             // glm::mat4 Projection = glm::perspective(glm::radians(45.0f), (float) width / (float)height, 0.1f, 100.0f);
             var projectionMatrix = glm.perspective(
@@ -43,8 +41,8 @@ namespace Mivi.Console
             );
 
             var viewMatrix = glm.lookAt(
-               new vec3(0f, 1f, 2.5f),
-               new vec3(0, 0.2f, 0),
+               new vec3(0f, -1.0f, 2.5f),
+               new vec3(0, 0.02f, 0),
                new vec3(0, 1, 0)
            );
 
@@ -66,13 +64,17 @@ namespace Mivi.Console
                 foreach (var (x, i) in vertexContainers.WithIndex())
                 {
                     var velocity = keys[i + MidiNote.LowestPianoIndex];
-                    var defaultColor = new[]
+                    if (velocity <= 0.001f)
+                    {
+                        continue;
+                    }
+
+                    var color = new[]
                     {
                         .8f - (i * 0.3f / 88f),
                         0.5f - (i / 176f),
                         (i / 100f)
                     };
-                    var color = velocity <= 0.001f ? black : defaultColor;
 
                     glUniform3f(colorLocation, color[0], color[1], color[2]);
 
@@ -88,7 +90,7 @@ namespace Mivi.Console
                     var scaleMatrix = new mat4(1.0f);
                     scaleMatrix[0, 0] = 1f; // x scale
                     scaleMatrix[1, 1] = scaleVolume(velocity); // y scale
-                    scaleMatrix[2, 2] = scaleVolume(velocity); // z scale
+                    scaleMatrix[2, 2] = state.SustainPedalOn ? 3f : 0f; // z scale
 
                     var modelMatrix = translateMatrix * rotationMatrix * scaleMatrix;
 
@@ -96,7 +98,7 @@ namespace Mivi.Console
 
                     glUniformMatrix4fv(mvpMatrixLocation, 1, false, mvpMatrix.to_array());
 
-                    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, NULL);
                 }
             }
 
@@ -104,7 +106,7 @@ namespace Mivi.Console
         }
 
         // This should probably be logarithmic
-        private static float scaleVolume(float midiVelocity) => midiVelocity / 64f;
+        private static float scaleVolume(float midiVelocity) => midiVelocity / 40f;
 
         private static readonly Random _random = new Random();
 
@@ -264,32 +266,35 @@ void main()
                 })
                 .ToList();
 
+            // important to go from back to front
             var squareIndices = new uint[]
             {
-                // front face
-                0, 1, 2,    // triangle 1
-                0, 3, 2,    // triangle 2
-
                 // rear face
                 4, 5, 6,
                 4, 7, 6,
 
                 // top face
-                0, 4, 7,
-                0, 3, 7,
+                7, 4, 0,
+                7, 3, 0,
 
                 // bottom face
-                1, 5, 6,
-                1, 2, 6,
+                6, 5, 1,
+                6, 2, 1,
 
                 // left face
-                2, 3, 6,
-                2, 7, 6,
+                6, 7, 2,
+                6, 3, 2,
 
                 // right face
-                0, 1, 5,
-                0, 4, 5
+                5, 1, 0,
+                5, 4, 0,
+
+                // front face
+                0, 1, 2,
+                0, 3, 2
             };
+
+
 
             var vertexArrays = glGenVertexArrays(indexedVertices.Count);
             var vertexBuffers = glGenBuffers(indexedVertices.Count);
