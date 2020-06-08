@@ -10,20 +10,18 @@ using Exception = System.Exception;
 
 namespace Mivi.Console
 {
-    /// <summary>
-    /// Basic GLFW example to create a window with an OpenGL 3.3 Core profile context and draw a triangle.
-    /// </summary>
-    public class TriangleProgram
+    public class GraphicsApplication
     {
-        /// <summary>
-        /// Obligatory name for your first OpenGL example program.
-        /// </summary>
-        private const string TITLE = "eouw0o83hf MIVI";
+        private readonly SharedState _state;
 
-        public static unsafe void EntryPoint(SharedState state)
+        public GraphicsApplication(SharedState state)
+            => _state = state;
+
+        public unsafe void Launch()
         {
             // Set context creation hints
             PrepareContext();
+
             // Create a window and shader program
             var window = CreateWindow(1024, 800);
             var program = CreateProgram();
@@ -34,7 +32,6 @@ namespace Mivi.Console
             var colorLocation = glGetUniformLocation(program, "color");
 
             // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
-            // glm::mat4 Projection = glm::perspective(glm::radians(45.0f), (float) width / (float)height, 0.1f, 100.0f);
             var projectionMatrix = glm.perspective(
                 glm.radians(45f),
                 1f, 0.1f, 100f
@@ -59,7 +56,7 @@ namespace Mivi.Console
 
                 glUseProgram(program);
 
-                var keys = state.NoteVelocities;
+                var keys = _state.NoteVelocities;
 
                 foreach (var (x, i) in vertexContainers.WithIndex())
                 {
@@ -90,7 +87,7 @@ namespace Mivi.Console
                     var scaleMatrix = new mat4(1.0f);
                     scaleMatrix[0, 0] = 1f; // x scale
                     scaleMatrix[1, 1] = scaleVolume(velocity); // y scale
-                    scaleMatrix[2, 2] = state.SustainPedalOn ? 3f : 0f; // z scale
+                    scaleMatrix[2, 2] = _state.SustainPedalOn ? 3f : 0f; // z scale
 
                     var modelMatrix = translateMatrix * rotationMatrix * scaleMatrix;
 
@@ -139,7 +136,7 @@ namespace Mivi.Console
         private static Window CreateWindow(int width, int height)
         {
             // Create window, make the OpenGL context current on the thread, and import graphics functions
-            var window = Glfw.CreateWindow(width, height, TITLE, Monitor.None, Window.None);
+            var window = Glfw.CreateWindow(width, height, "eouw0o83hf MIVI", Monitor.None, Window.None);
             Glfw.MakeContextCurrent(window);
             Import(Glfw.GetProcAddress);
 
@@ -177,10 +174,6 @@ void main()
 }
 ";
 
-        /// <summary>
-        /// Creates an extremely basic shader program that is capable of displaying a triangle on screen.
-        /// </summary>
-        /// <returns>The created shader program. No error checking is performed for this basic example.</returns>
         private static uint CreateProgram()
         {
             var vertex = CreateShader(GL_VERTEX_SHADER, TriangleVertexShader);

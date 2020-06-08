@@ -12,7 +12,7 @@ namespace Mivi.Console
     {
         public static async Task Main(string[] _)
         {
-            // Composition root singletons
+            // Core components
             var state = new SharedState();
             var eventBus = new EventBus();
 
@@ -41,7 +41,9 @@ namespace Mivi.Console
                 var producer = new RandomInputProducer(eventBus);
             }
 
-            TriangleProgram.EntryPoint(state);
+            var graphicsApplication = new GraphicsApplication(state);
+            // Blocks until finished
+            graphicsApplication.Launch();
         }
     }
 }
