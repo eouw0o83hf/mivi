@@ -34,8 +34,10 @@ namespace Mivi.Console
 
             Glfw.SetKeyCallback(window, KeyCallback);
 
-            // Define a simple triangle
-            var vertexContainers = CreateVertices(1);
+            // Create present-key containers
+            var vertexContainers = CreateVertices(88);
+            // Past-key containers
+            var pastVertexContainers = CreateVertices(_state.PastNotes.Length);
 
             var colorLocation = glGetUniformLocation(program, "color");
 
@@ -72,22 +74,18 @@ namespace Mivi.Console
 
                 var keys = _state.NoteVelocities;
 
+                // Draw current notes
                 foreach (var (x, i) in vertexContainers.WithIndex())
                 {
-                    var velocity = keys[i + MidiNote.LowestPianoIndex];
+                    var adjustedIndex = i + MidiNote.LowestPianoIndex;
+
+                    var velocity = keys[adjustedIndex];
                     if (velocity <= 0.001f)
                     {
                         continue;
                     }
 
-                    // var color = new[]
-                    // {
-                    //     .8f - (i * 0.3f / 88f),
-                    //     0.5f - (i / 176f),
-                    //     (i / 100f)
-                    // };
-
-                    var color = colorProvider.GetColor(i);
+                    var color = colorProvider.GetColor(adjustedIndex);
 
                     glUniform3f(colorLocation, color[0], color[1], color[2]);
 
@@ -103,7 +101,45 @@ namespace Mivi.Console
                     var scaleMatrix = new mat4(1.0f);
                     scaleMatrix[0, 0] = 1f; // x scale
                     scaleMatrix[1, 1] = scaleVolume(velocity); // y scale
-                    scaleMatrix[2, 2] = _state.SustainPedalOn ? 3f : 0f; // z scale
+                    scaleMatrix[2, 2] = _state.NoteLengths[adjustedIndex] / 10f;
+
+                    var modelMatrix = translateMatrix * rotationMatrix * scaleMatrix;
+
+                    var mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
+
+                    glUniformMatrix4fv(mvpMatrixLocation, 1, false, mvpMatrix.to_array());
+
+                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, NULL);
+                }
+
+                // Draw past notes
+                for (var i = 0; i < _state.PastNotes.Length; ++i)
+                {
+                    var pastNote = _state.PastNotes[i];
+                    if (pastNote == null)
+                    {
+                        continue;
+                    }
+
+                    var adjustedIndex = pastNote.Index - MidiNote.LowestPianoIndex;
+
+                    var color = colorProvider.GetColor(pastNote.Index);
+                    glUniform3f(colorLocation, color[0], color[1], color[2]);
+
+                    glBindVertexArray(pastVertexContainers[i].VertexArray);
+
+                    // top two of the rightmost column
+                    var translateMatrix = new mat4(1.0f);
+                    translateMatrix[3, 0] = KeyUnitWidth * adjustedIndex - 1f; // x position
+                    translateMatrix[3, 1] = -1; // y position
+                    translateMatrix[3, 2] = -pastNote.TicksSinceKeyUp / 10f; // z position
+
+                    var rotationMatrix = new mat4(1.0f);
+
+                    var scaleMatrix = new mat4(1.0f);
+                    scaleMatrix[0, 0] = 1f; // x scale
+                    scaleMatrix[1, 1] = scaleVolume(pastNote.Velocity); // y scale
+                    scaleMatrix[2, 2] = pastNote.Length / 10f;
 
                     var modelMatrix = translateMatrix * rotationMatrix * scaleMatrix;
 
@@ -272,10 +308,10 @@ void main()
         /// </summary>
         /// <param name="vao">The created vertex array object for the triangle.</param>
         /// <param name="vbo">The created vertex buffer object for the triangle.</param>
-        private static unsafe List<VertexContainer> CreateVertices(int verticeSet)
+        private static unsafe List<VertexContainer> CreateVertices(int count)
         {
             var indexedVertices = Enumerable
-                .Range(0, 88)
+                .Range(0, count)
                 .Select(a => new float[]
                 {
                     // front face

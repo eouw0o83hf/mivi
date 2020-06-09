@@ -25,8 +25,8 @@ namespace Mivi.Console
             var clockTickProducer = new ClockTickProducer(eventBus);
 
             // Event bus consumers
-            var consumer = new NoteVolumeConsumer(state);
-            eventBus.RegisterConsumer(consumer);
+            eventBus.RegisterConsumer(new NoteVolumeConsumer(state));
+            eventBus.RegisterConsumer(new NoteLengthConsumer(state));
 
             // Low-level MIDI wire-up
             var manager = MidiAccessManager.Default;
