@@ -24,7 +24,7 @@ namespace GLFW
 #if Windows
         public const string LIBRARY = "../glfwBin/windows/glfw3";
 #else
-        public const string LIBRARY = "/usr/local/lib/libglfw.3.3.dylib";
+        public const string LIBRARY = "../glfwBin/mac/libglfw.3.dylib";// "/usr/local/lib/libglfw.3.3.dylib";
 #endif
 
         private static readonly ErrorCallback errorCallback = GlfwError;
