@@ -48,8 +48,8 @@ namespace Mivi.Console
             );
 
             var viewMatrix = glm.lookAt(
-               new vec3(0f, 0.4f, 2.5f),   // eye
-               new vec3(0, 0.02f, 0),       // center
+               new vec3(0f, 1.0f, 2.2f),    // eye
+               new vec3(0, -0.0f, 0),       // center
                new vec3(0, 1, 0)            // up
            );
 
@@ -172,7 +172,7 @@ namespace Mivi.Console
         }
 
         // This should probably be logarithmic
-        private static float scaleVolume(float midiVelocity) => midiVelocity / 400f;
+        private static float scaleVolume(float midiVelocity) => midiVelocity / 300f;
 
         private static readonly Random _random = new Random();
 
