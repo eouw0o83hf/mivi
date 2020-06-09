@@ -78,6 +78,18 @@ public const string LIBRARY = "/usr/local/lib/libglfw.3.3.dylib";
 
 Be sure to set hints before opening a window
 
+### Windows
+
+#### GLFW3
+
+You need to have a reference to at least GLFW3.2 on your system. The latest version hooked up to `chocolatey` is 3.0, which will not work with glfw-net.
+
+To get the latest version, download the compiled Windows binaries here:
+
+https://www.glfw.org/download.html
+
+Then, set `Glfw.LIBRARY` to reference `lib-vc2019\glfw3.dll` inside the extracted binary package, including the full path.
+
 ## Reference Materials
 
 Personal tracking for future reference:
