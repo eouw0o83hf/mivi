@@ -21,7 +21,7 @@ namespace Mivi.Console
             _state = state;
         }
 
-        private const float ticksPerZUnit = 20f;
+        private const float ticksPerZUnit = 50f;
 
         public unsafe void Launch()
         {
@@ -29,7 +29,7 @@ namespace Mivi.Console
             PrepareContext();
 
             // Create a window and shader program
-            var window = CreateWindow(1024, 800);
+            var window = CreateWindow();
             var program = CreateProgram();
 
             Glfw.SetKeyCallback(window, KeyCallback);
@@ -48,8 +48,8 @@ namespace Mivi.Console
             );
 
             var viewMatrix = glm.lookAt(
-               new vec3(0f, 1.0f, 2.2f),    // eye
-               new vec3(0, -0.0f, 0),       // center
+               new vec3(0f, 2.0f, 1.3f),    // eye
+               new vec3(0, -0.35f, -1.0f),       // center
                new vec3(0, 1, 0)            // up
            );
 
@@ -194,6 +194,11 @@ namespace Mivi.Console
             Glfw.WindowHint(Hint.Doublebuffer, true);
             Glfw.WindowHint(Hint.Decorated, true);
             Glfw.WindowHint(Hint.OpenglForwardCompatible, true);
+
+            Glfw.WindowHint(Hint.Samples, 8);
+            // This is supposed to enable anti aliasing
+            // but it's blowing up the Windows app
+            // glEnable(GL_MULTISAMPLE);
         }
 
         /// <summary>
@@ -202,18 +207,14 @@ namespace Mivi.Console
         /// <param name="width">The width of the client area, in pixels.</param>
         /// <param name="height">The height of the client area, in pixels.</param>
         /// <returns>A handle to the created window.</returns>
-        private static Window CreateWindow(int width, int height)
+        private static Window CreateWindow()
         {
+            var screen = Glfw.PrimaryMonitor.WorkArea;
+
             // Create window, make the OpenGL context current on the thread, and import graphics functions
-            var window = Glfw.CreateWindow(width, height, "eouw0o83hf MIVI", Monitor.None, Window.None);
+            var window = Glfw.CreateWindow(screen.Width, screen.Height, "eouw0o83hf MIVI", Monitor.None, Window.None);
             Glfw.MakeContextCurrent(window);
             Import(Glfw.GetProcAddress);
-
-            // Center window
-            var screen = Glfw.PrimaryMonitor.WorkArea;
-            var x = (screen.Width - width) / 2;
-            var y = (screen.Height - height) / 2;
-            Glfw.SetWindowPosition(window, x, y);
 
             return window;
         }
