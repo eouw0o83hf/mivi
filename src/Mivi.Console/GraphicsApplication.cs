@@ -21,7 +21,7 @@ namespace Mivi.Console
             _state = state;
         }
 
-
+        private const float ticksPerZUnit = 20f;
 
         public unsafe void Launch()
         {
@@ -48,9 +48,9 @@ namespace Mivi.Console
             );
 
             var viewMatrix = glm.lookAt(
-               new vec3(0f, -1.0f, 2.5f),
-               new vec3(0, 0.02f, 0),
-               new vec3(0, 1, 0)
+               new vec3(0f, 0.4f, 2.5f),   // eye
+               new vec3(0, 0.02f, 0),       // center
+               new vec3(0, 1, 0)            // up
            );
 
             var mvpMatrixLocation = glGetUniformLocation(program, "mvp");
@@ -101,7 +101,7 @@ namespace Mivi.Console
                     var scaleMatrix = new mat4(1.0f);
                     scaleMatrix[0, 0] = 1f; // x scale
                     scaleMatrix[1, 1] = scaleVolume(velocity); // y scale
-                    scaleMatrix[2, 2] = _state.NoteLengths[adjustedIndex] / 10f;
+                    scaleMatrix[2, 2] = _state.NoteLengths[adjustedIndex] / ticksPerZUnit;
 
                     var modelMatrix = translateMatrix * rotationMatrix * scaleMatrix;
 
@@ -132,14 +132,14 @@ namespace Mivi.Console
                     var translateMatrix = new mat4(1.0f);
                     translateMatrix[3, 0] = KeyUnitWidth * adjustedIndex - 1f; // x position
                     translateMatrix[3, 1] = -1; // y position
-                    translateMatrix[3, 2] = -pastNote.TicksSinceKeyUp / 10f; // z position
+                    translateMatrix[3, 2] = -pastNote.TicksSinceKeyUp / ticksPerZUnit; // z position
 
                     var rotationMatrix = new mat4(1.0f);
 
                     var scaleMatrix = new mat4(1.0f);
                     scaleMatrix[0, 0] = 1f; // x scale
                     scaleMatrix[1, 1] = scaleVolume(pastNote.Velocity); // y scale
-                    scaleMatrix[2, 2] = pastNote.Length / 10f;
+                    scaleMatrix[2, 2] = pastNote.Length / ticksPerZUnit;
 
                     var modelMatrix = translateMatrix * rotationMatrix * scaleMatrix;
 
@@ -172,7 +172,7 @@ namespace Mivi.Console
         }
 
         // This should probably be logarithmic
-        private static float scaleVolume(float midiVelocity) => midiVelocity / 40f;
+        private static float scaleVolume(float midiVelocity) => midiVelocity / 400f;
 
         private static readonly Random _random = new Random();
 

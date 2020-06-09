@@ -8,6 +8,9 @@ namespace Mivi.Console
 
         private const int periodTicks = 2000;
 
+        // how far to space keys from each other on the period
+        private const int keyIndexFactor = 10;
+
         public void Tick()
         {
             ++tickOffset;
@@ -20,7 +23,7 @@ namespace Mivi.Console
 
         public float[] GetColor(int keyIndex)
         {
-            var adjustedKeyIndex = keyIndex * 5;
+            var adjustedKeyIndex = keyIndex * keyIndexFactor;
 
             var redPeriod = adjustedKeyIndex + tickOffset;
             var greenPeriod = adjustedKeyIndex + tickOffset + (periodTicks / 3);
