@@ -16,6 +16,11 @@ namespace Mivi.Console
             var state = new SharedState();
             var eventBus = new EventBus();
 
+            // dotnet core does not provide a cross-platform keyboard hook interface,
+            // but GLFW does. So, we force GLFW to pull double duty and send us back
+            // keyboard events.
+            var keyboardEvents = new KeyboardEvents();
+
             // Event bus producers
             var clockTickProducer = new ClockTickProducer(eventBus);
 
@@ -37,11 +42,11 @@ namespace Mivi.Console
             }
             else
             {
-                SConsole.WriteLine("No MIDI devices found, using random input");
-                var producer = new RandomInputProducer(eventBus);
+                SConsole.WriteLine("No MIDI devices found, using keyboard input");
+                var producer = new KeyboardInputProducer(eventBus, keyboardEvents);
             }
 
-            var graphicsApplication = new GraphicsApplication(state);
+            var graphicsApplication = new GraphicsApplication(keyboardEvents, state);
             // Blocks until finished
             graphicsApplication.Launch();
         }

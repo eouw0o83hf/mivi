@@ -12,10 +12,16 @@ namespace Mivi.Console
 {
     public class GraphicsApplication
     {
+        private readonly KeyboardEvents _keyboardEvents;
         private readonly SharedState _state;
 
-        public GraphicsApplication(SharedState state)
-            => _state = state;
+        public GraphicsApplication(KeyboardEvents keyboardEvents, SharedState state)
+        {
+            _keyboardEvents = keyboardEvents;
+            _state = state;
+        }
+
+
 
         public unsafe void Launch()
         {
@@ -25,6 +31,8 @@ namespace Mivi.Console
             // Create a window and shader program
             var window = CreateWindow(1024, 800);
             var program = CreateProgram();
+
+            Glfw.SetKeyCallback(window, KeyCallback);
 
             // Define a simple triangle
             var vertexContainers = CreateVertices(1);
@@ -45,8 +53,14 @@ namespace Mivi.Console
 
             var mvpMatrixLocation = glGetUniformLocation(program, "mvp");
 
+            var colorProvider = new KeyColorProvider();
+
             while (!Glfw.WindowShouldClose(window))
             {
+                // TODO wire this up to the main bus clock
+                // instead of the ui loop
+                colorProvider.Tick();
+
                 // Swap fore/back framebuffers, and poll for operating system events.
                 Glfw.SwapBuffers(window);
                 Glfw.PollEvents();
@@ -66,12 +80,14 @@ namespace Mivi.Console
                         continue;
                     }
 
-                    var color = new[]
-                    {
-                        .8f - (i * 0.3f / 88f),
-                        0.5f - (i / 176f),
-                        (i / 100f)
-                    };
+                    // var color = new[]
+                    // {
+                    //     .8f - (i * 0.3f / 88f),
+                    //     0.5f - (i / 176f),
+                    //     (i / 100f)
+                    // };
+
+                    var color = colorProvider.GetColor(i);
 
                     glUniform3f(colorLocation, color[0], color[1], color[2]);
 
@@ -100,6 +116,23 @@ namespace Mivi.Console
             }
 
             Glfw.Terminate();
+        }
+
+        // Unfortunately dotnet core does not provide cross-platform global
+        // (or even in-application) keyboard hooks. Fortunately, GLFW happens
+        // to do that. So, we need to feed data back to the main part of the
+        // app from this component since it needs to pull double duty.
+        private void KeyCallback(Window window, Keys key, int scanCode, InputState state, ModifierKeys mods)
+        {
+            switch (state)
+            {
+                case InputState.Press:
+                    _keyboardEvents.PushKeyChange((int)key, true);
+                    break;
+                case InputState.Release:
+                    _keyboardEvents.PushKeyChange((int)key, false);
+                    break;
+            }
         }
 
         // This should probably be logarithmic
