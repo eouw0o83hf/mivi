@@ -4,6 +4,10 @@ Musical Instrument Video Interface
 
 A cross-platform MIDI visualizer. Written in C# on dotnet core, using OpenGL for rendering.
 
+## Executing
+
+`cd` to `src/Mivi.Console` and enter `dotnet run` at the command line. Note that you must have [dotnet core sdk 3.1+ installed](https://dotnet.microsoft.com/download/dotnet-core/3.1).
+
 Example visualization
 
 ![fur elise](https://user-images.githubusercontent.com/2204030/83962879-ecba8a00-a866-11ea-97cf-dbe77f93d150.gif)
@@ -64,31 +68,15 @@ State will be shared between `Consumers` and the graphics side via a shared `Sta
 
 ## Dependencies
 
-### macOS
+### dotnet core 3.1
 
-#### GLFW
+You must have the dotnet core 3.1 SDK installed. Downloads available here:
 
-glfw: `brew install glfw`
+https://dotnet.microsoft.com/download/dotnet-core/3.1
 
-then, in `glfw-net/GLFW.NET/Glfw.cs`, update `LIBRARY`. (Change minor version of glfw changes).
+### GLFW
 
-```
-public const string LIBRARY = "/usr/local/lib/libglfw.3.3.dylib";
-```
-
-Be sure to set hints before opening a window
-
-### Windows
-
-#### GLFW3
-
-You need to have a reference to at least GLFW3.2 on your system. The latest version hooked up to `chocolatey` is 3.0, which will not work with glfw-net.
-
-To get the latest version, download the compiled Windows binaries here:
-
-https://www.glfw.org/download.html
-
-Then, set `Glfw.LIBRARY` to reference `lib-vc2019\glfw3.dll` inside the extracted binary package, including the full path.
+This application depends on glfw, which can be installed with any package manager. Unfortunately it installs with wildly different names and locations per OS, so I have inlined the GLFW binaries with this codebase.
 
 ## Reference Materials
 
