@@ -14,10 +14,10 @@
     <DefineConstants>WINDOWS</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="managed-midi" Version="1.9.14"/>
+    <PackageReference Include="managed-midi" Version="1.9.14" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Mivi.Core\Mivi.Core.csproj"/>
-    <ProjectReference Include="..\glfw-net\GLFW.NET\GLFW.NET.csproj"/>
+    <ProjectReference Include="..\Mivi.Core\Mivi.Core.csproj" />
+    <ProjectReference Include="..\GLFW.NET\GLFW.NET.csproj" />
   </ItemGroup>
 </Project>
