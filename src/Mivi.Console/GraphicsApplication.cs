@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using GLFW;
 using GlmNet;
 using Mivi.Core;
 using static OpenGL.Gl;
 using Exception = System.Exception;
+using SConsole = System.Console;
 
 namespace Mivi.Console
 {
@@ -187,7 +189,25 @@ namespace Mivi.Console
         private static void PrepareContext()
         {
             // Set some common hints for the OpenGL profile creation
-            Glfw.WindowHint(Hint.ClientApi, ClientApi.OpenGL);
+            try
+            {
+                Glfw.WindowHint(Hint.ClientApi, ClientApi.OpenGL);
+            }
+            catch (TypeInitializationException ex)
+                when (ex.InnerException is DllNotFoundException d)
+            {
+                SConsole.WriteLine("Could not find GLFW DLL");
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    SConsole.WriteLine("You need to add the glfw3 library's directory to the PATH");
+                }
+                else
+                {
+                    SConsole.WriteLine("You need to add the glfw library's directory to the PATH. Recommend running:");
+                    SConsole.WriteLine("export PATH=$PATH:/usr/local/include");
+                }
+                Environment.Exit(1);
+            }
             Glfw.WindowHint(Hint.ContextVersionMajor, 3);
             Glfw.WindowHint(Hint.ContextVersionMinor, 3);
             Glfw.WindowHint(Hint.OpenglProfile, Profile.Core);
