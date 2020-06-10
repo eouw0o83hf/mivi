@@ -161,17 +161,13 @@ namespace Mivi.Console
         // to do that. So, we need to feed data back to the main part of the
         // app from this component since it needs to pull double duty.
         private void KeyCallback(Window window, Keys key, int scanCode, InputState state, ModifierKeys mods)
-        {
-            switch (state)
+            => _keyboardEvents.PushKeyChange((int)key, state switch
             {
-                case InputState.Press:
-                    _keyboardEvents.PushKeyChange((int)key, true);
-                    break;
-                case InputState.Release:
-                    _keyboardEvents.PushKeyChange((int)key, false);
-                    break;
-            }
-        }
+                InputState.Press => KeyboardEventTypes.Pressed,
+                InputState.Release => KeyboardEventTypes.Released,
+                InputState.Repeat => KeyboardEventTypes.Repeated,
+                _ => 0
+            });
 
         // This should probably be logarithmic
         private static float scaleVolume(float midiVelocity) => midiVelocity / 300f;
