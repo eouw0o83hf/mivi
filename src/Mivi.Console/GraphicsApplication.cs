@@ -34,6 +34,13 @@ namespace Mivi.Console
             var window = CreateWindow();
             var program = CreateProgram();
 
+            // Enable anti-aliasing
+            glEnable(GL_MULTISAMPLE);
+            // enable depth testing to avoid
+            // z-indexing issues
+            glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_LEQUAL);
+
             Glfw.SetKeyCallback(window, KeyCallback);
 
             // Create present-key containers
@@ -42,6 +49,7 @@ namespace Mivi.Console
             var pastVertexContainers = CreateVertices(_state.PastNotes.Length);
 
             var colorLocation = glGetUniformLocation(program, "color");
+            var tickLocation = glGetUniformLocation(program, "ticks");
 
             // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
             var projectionMatrix = glm.perspective(
@@ -58,12 +66,18 @@ namespace Mivi.Console
             var mvpMatrixLocation = glGetUniformLocation(program, "mvp");
 
             var colorProvider = new KeyColorProvider();
+            // float so that we never have to worry about overflow
+            // and we can make it a little more granular
+            var ticksStep = 0.1f;
+            var ticksFloat = 0f;
 
             while (!Glfw.WindowShouldClose(window))
             {
                 // TODO wire this up to the main bus clock
                 // instead of the ui loop
                 colorProvider.Tick();
+                ticksFloat += ticksStep;
+                glUniform1f(tickLocation, ticksFloat);
 
                 // Swap fore/back framebuffers, and poll for operating system events.
                 Glfw.SwapBuffers(window);
@@ -71,6 +85,8 @@ namespace Mivi.Console
 
                 // Clear the framebuffer to defined background color
                 glClear(GL_COLOR_BUFFER_BIT);
+                // Clear depth buffer to avoid flickering
+                glClear(GL_DEPTH_BUFFER_BIT);
 
                 glUseProgram(program);
 
@@ -212,9 +228,6 @@ namespace Mivi.Console
             Glfw.WindowHint(Hint.OpenglForwardCompatible, true);
 
             Glfw.WindowHint(Hint.Samples, 8);
-            // This is supposed to enable anti aliasing
-            // but it's blowing up the Windows app
-            // glEnable(GL_MULTISAMPLE);
         }
 
         /// <summary>
@@ -240,23 +253,46 @@ namespace Mivi.Console
 
 layout (location = 0) in vec3 pos;
 
+out vec4 position;
+
 uniform mat4 mvp;
 
 void main()
 {
-    gl_Position = mvp * vec4(pos, 1.0);
+    position = mvp * vec4(pos, 1.0);
+    gl_Position = position;
 }
 ";
 
         private const string TriangleFragmentShader = @"
 #version 330 core
+in vec4 position;
+
 out vec4 result;
 
 uniform vec3 color;
+uniform float ticks;
+
+float rectify(float x) {
+    return (x + 1.0) / 2.0;
+}
 
 void main()
 {
-    result = vec4(color, 1.0);
+    float adjustedTicks = ticks / 17.0;
+    vec3 adjustedCoord = vec3(position / 40.0);
+
+    float colorSeed =
+        (adjustedCoord.x * 4.0)
+        + (adjustedCoord.y / 2.5)
+        + adjustedTicks;
+
+    float r = rectify(cos(colorSeed));
+    float g = rectify(cos(colorSeed + 2.1));
+    float b = rectify(cos(colorSeed + 4.2));
+    float a = 1.0;
+    result = vec4(r, g, b, a);
+    result = result + 0.1;
 }
 ";
 
@@ -345,7 +381,6 @@ void main()
                 })
                 .ToList();
 
-            // important to go from back to front
             var squareIndices = new uint[]
             {
                 // rear face
@@ -361,8 +396,8 @@ void main()
                 6, 2, 1,
 
                 // left face
-                6, 7, 2,
-                6, 3, 2,
+                7, 6, 2,
+                7, 3, 2,
 
                 // right face
                 5, 1, 0,
