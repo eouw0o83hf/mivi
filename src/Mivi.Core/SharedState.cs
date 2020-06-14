@@ -15,14 +15,18 @@ namespace Mivi.Core
         public readonly int[] NoteLengths = new int[128];
 
         public bool SustainPedalOn = false;
+        public bool SostenutoPedalOn = false;
 
         // Past input state
 
         // Unordered array of past notes.
         // Each index may or may not contain
         // an entry, as it is used as a
-        // rotating buffer
-        public readonly PastNote?[] PastNotes = new PastNote?[50];
+        // rotating buffer. To increase or
+        // decrease past note buffer size, just
+        // change the array length in the
+        // declaration
+        public readonly PastNote?[] PastNotes = new PastNote?[100];
     }
 
     public class PastNote

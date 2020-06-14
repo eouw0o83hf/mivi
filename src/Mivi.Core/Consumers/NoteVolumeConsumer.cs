@@ -47,6 +47,14 @@ namespace Mivi.Core.Consumers
                     _state.SustainPedalOn = false;
                     break;
 
+                case SostenutoPedalPressed _:
+                    _state.SostenutoPedalOn = true;
+                    break;
+
+                case SostenutoPedalReleased _:
+                    _state.SostenutoPedalOn = false;
+                    break;
+
                 case SoftPedalPressed _:
                     _softOn = true;
                     break;
@@ -74,12 +82,12 @@ namespace Mivi.Core.Consumers
                             if (_state.SustainPedalOn)
                             {
                                 // All of the resonance
-                                attenuationFactor = 0.998f;
+                                attenuationFactor = 0.9999f;
                             }
                             else
                             {
                                 // Just pretty good resonance
-                                attenuationFactor = 0.9979f;
+                                attenuationFactor = 0.998f;
                             }
                         }
                         else if (_state.SustainPedalOn)
@@ -92,7 +100,7 @@ namespace Mivi.Core.Consumers
                         {
                             // Key was lifted without sustain pedal.
                             // Rapid attenuation
-                            attenuationFactor = 0.94f;
+                            attenuationFactor = 0.75f;
                         }
 
                         _state.NoteVelocities[i] *= attenuationFactor;

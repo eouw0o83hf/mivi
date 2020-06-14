@@ -24,6 +24,22 @@ namespace Mivi.Console
         }
 
         private const float ticksPerZUnit = 50f;
+        private const float minVelocity = 0.1f;
+
+        const float ticksStep = 0.1f;
+        const float maxCameraMove = 0.25f;
+
+        // map to a -1->1 continuum
+        const float keyUnitWidth = 0.05f;
+        const float keySpacing = 0.0065f;
+
+        // given a continuous key index, determines
+        // its position on the x axis in world space
+        float keyIndexToXCoord(float i)
+        {
+            var offset = 44f * (keyUnitWidth + keySpacing);
+            return (i * (keyUnitWidth + keySpacing)) - offset;
+        }
 
         public unsafe void Launch()
         {
@@ -51,16 +67,23 @@ namespace Mivi.Console
             var colorLocation = glGetUniformLocation(program, "color");
             var tickLocation = glGetUniformLocation(program, "ticks");
 
-            // Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
+            // Projection matrix : 45° Field of View, 1:1 aspect ratio, z display range : 0.1 unit <-> 100 units
             var projectionMatrix = glm.perspective(
                 glm.radians(45f),
-                1f, 0.1f, 100f
+                1f,     // aspect ratio
+                0.0f,   // z min render
+                100f    // z max render
             );
 
+            var defaultCameraPosition = new vec3(0f, 1.5f, 6.5f);
+            var currentCameraPosition = defaultCameraPosition;
+
+            var defaultCameraCenter = new vec3(0, 1.1f, -2.0f);
+            var currentCameraCenter = defaultCameraCenter;
             var viewMatrix = glm.lookAt(
-               new vec3(0f, 2.0f, 1.3f),    // eye
-               new vec3(0, -0.35f, -1.0f),       // center
-               new vec3(0, 1, 0)            // up
+               currentCameraPosition,        // eye
+               currentCameraCenter,      // center
+               new vec3(0, 1, 0)                // up
            );
 
             var mvpMatrixLocation = glGetUniformLocation(program, "mvp");
@@ -68,7 +91,6 @@ namespace Mivi.Console
             var colorProvider = new KeyColorProvider();
             // float so that we never have to worry about overflow
             // and we can make it a little more granular
-            var ticksStep = 0.1f;
             var ticksFloat = 0f;
 
             while (!Glfw.WindowShouldClose(window))
@@ -92,45 +114,101 @@ namespace Mivi.Console
 
                 var keys = _state.NoteVelocities;
 
-                // Draw current notes
-                foreach (var (x, i) in vertexContainers.WithIndex())
+                // if the sostenuto pedal is down and any keys are
+                // pressed, zoom in
+                vec3 nextCameraPosition = currentCameraPosition;
+                vec3 nextCameraCenter = currentCameraCenter;
+                if (_state.SostenutoPedalOn)
                 {
-                    var adjustedIndex = i + MidiNote.LowestPianoIndex;
-
-                    var velocity = keys[adjustedIndex];
-                    if (velocity <= 0.001f)
+                    if (keys.Count(a => a >= minVelocity) > 0)
                     {
-                        continue;
+                        var minKeyIndex = keys.TakeWhile(a => a < minVelocity).Count();
+                        var maxKeyIndex = keys.Length - 1 - keys.Reverse().TakeWhile(a => a < minVelocity).Count();
+
+                        var minIndex = minKeyIndex - MidiNote.LowestPianoIndex;
+                        var maxIndex = maxKeyIndex - MidiNote.LowestPianoIndex;
+
+                        var centerIndex = minIndex + ((maxIndex - minIndex) / 2f);
+
+                        // view should be at the vertex of a 45/right triangle
+                        // whose hypoteneuse is the far ends of the min/max bars
+                        var minX = keyIndexToXCoord(minIndex);
+                        // add spacing to the left of the bottom key
+                        minX -= keySpacing;
+                        // we want to add a border of the regular key spacing around
+                        // the frame, and this method returns the bottom left position
+                        // for the index. so, the beginning of the next index's position
+                        // is the same as the end of the current one with margin
+                        var maxX = keyIndexToXCoord(maxIndex + 1);
+                        var width = maxX - minX;
+                        var xPosition = minX + (width / 2f);
+
+                        // 1:1 aspect ratio
+                        var yMax = 1.0f;
+                        var yMin = -1.0f;
+                        var totalKeyboardWidth = 88f * keyUnitWidth + 87f * keySpacing;
+                        // linearly interpolate between min and mix with key widths
+                        var percentageCoverage = width / totalKeyboardWidth;
+                        var yPosition = yMin + ((yMax - yMin) * percentageCoverage);
+
+                        // 45 degree FoV. setup two right triangles whose shared
+                        // leg is the vector from zPosition to the XY plane. the
+                        // trig boils down to this factor
+                        var widthFactor = 1.0f / (2.0f * (float)Math.Tan(Math.PI / 8f));
+                        var zPosition = width * widthFactor;
+
+                        nextCameraPosition = new vec3(xPosition, yPosition, zPosition);
+                        nextCameraCenter = new vec3(xPosition, yPosition + 1f, -10f);
                     }
-
-                    var color = colorProvider.GetColor(adjustedIndex);
-
-                    glUniform3f(colorLocation, color[0], color[1], color[2]);
-
-                    glBindVertexArray(x.VertexArray);
-
-                    // top two of the rightmost column
-                    var translateMatrix = new mat4(1.0f);
-                    translateMatrix[3, 0] = KeyUnitWidth * i - 1f; // x position
-                    translateMatrix[3, 1] = -1; // y position
-
-                    var rotationMatrix = new mat4(1.0f);
-
-                    var scaleMatrix = new mat4(1.0f);
-                    scaleMatrix[0, 0] = 1f; // x scale
-                    scaleMatrix[1, 1] = scaleVolume(velocity); // y scale
-                    scaleMatrix[2, 2] = _state.NoteLengths[adjustedIndex] / ticksPerZUnit;
-
-                    var modelMatrix = translateMatrix * rotationMatrix * scaleMatrix;
-
-                    var mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
-
-                    glUniformMatrix4fv(mvpMatrixLocation, 1, false, mvpMatrix.to_array());
-
-                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, NULL);
+                }
+                else
+                {
+                    nextCameraPosition = defaultCameraPosition;
+                    nextCameraCenter = defaultCameraCenter;
                 }
 
-                // Draw past notes
+                // smooth transitions
+                // for some reasons these datatypes don't deal with being
+                // mutated inside sets. this whole thing needs to be a
+                // first-class pipeline or state manager
+                for (var i = 0; i < 3; ++i)
+                {
+                    var difference = currentCameraPosition[i] - nextCameraPosition[i];
+
+                    if (difference > maxCameraMove)
+                    {
+                        nextCameraPosition[i] = currentCameraPosition[i] - maxCameraMove;
+                    }
+                    else if (difference < -maxCameraMove)
+                    {
+                        nextCameraPosition[i] = currentCameraPosition[i] + maxCameraMove;
+                    }
+                }
+
+                for (var i = 0; i < 3; ++i)
+                {
+                    var difference = currentCameraCenter[i] - nextCameraCenter[i];
+
+                    if (difference > maxCameraMove)
+                    {
+                        nextCameraCenter[i] = currentCameraCenter[i] - maxCameraMove;
+                    }
+                    else if (difference < -maxCameraMove)
+                    {
+                        nextCameraCenter[i] = currentCameraCenter[i] + maxCameraMove;
+                    }
+                }
+
+                currentCameraPosition = nextCameraPosition;
+                currentCameraCenter = nextCameraCenter;
+
+                viewMatrix = glm.lookAt(
+                    currentCameraPosition,
+                    currentCameraCenter,
+                    new vec3(0, 1, 0)  // up
+                );
+
+                // Draw historical notes first since they're in the back
                 for (var i = 0; i < _state.PastNotes.Length; ++i)
                 {
                     var pastNote = _state.PastNotes[i];
@@ -148,16 +226,55 @@ namespace Mivi.Console
 
                     // top two of the rightmost column
                     var translateMatrix = new mat4(1.0f);
-                    translateMatrix[3, 0] = KeyUnitWidth * adjustedIndex - 1f; // x position
+                    translateMatrix[3, 0] = keyIndexToXCoord(adjustedIndex); // x position
                     translateMatrix[3, 1] = -1; // y position
                     translateMatrix[3, 2] = -pastNote.TicksSinceKeyUp / ticksPerZUnit; // z position
 
                     var rotationMatrix = new mat4(1.0f);
 
                     var scaleMatrix = new mat4(1.0f);
-                    scaleMatrix[0, 0] = 1f; // x scale
+                    scaleMatrix[0, 0] = keyUnitWidth; // x scale
                     scaleMatrix[1, 1] = scaleVolume(pastNote.Velocity); // y scale
                     scaleMatrix[2, 2] = pastNote.Length / ticksPerZUnit;
+
+                    var modelMatrix = translateMatrix * rotationMatrix * scaleMatrix;
+
+                    var mvpMatrix = projectionMatrix * viewMatrix * modelMatrix;
+
+                    glUniformMatrix4fv(mvpMatrixLocation, 1, false, mvpMatrix.to_array());
+
+                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, NULL);
+                }
+
+                // Draw current notes
+                foreach (var (x, i) in vertexContainers.WithIndex())
+                {
+                    var adjustedIndex = i + MidiNote.LowestPianoIndex;
+
+                    var velocity = keys[adjustedIndex];
+                    if (velocity < minVelocity)
+                    {
+                        continue;
+                    }
+
+                    var color = colorProvider.GetColor(adjustedIndex);
+
+                    glUniform3f(colorLocation, color[0], color[1], color[2]);
+
+                    glBindVertexArray(x.VertexArray);
+
+                    // top two of the rightmost column
+                    var translateMatrix = new mat4(1.0f);
+                    // * 1.25 to add a little space between adjacent keys
+                    translateMatrix[3, 0] = keyIndexToXCoord(i); // x position
+                    translateMatrix[3, 1] = -1; // y position
+
+                    var rotationMatrix = new mat4(1.0f);
+
+                    var scaleMatrix = new mat4(1.0f);
+                    scaleMatrix[0, 0] = keyUnitWidth; // x scale
+                    scaleMatrix[1, 1] = scaleVolume(velocity); // y scale
+                    scaleMatrix[2, 2] = _state.NoteLengths[adjustedIndex] / ticksPerZUnit;
 
                     var modelMatrix = translateMatrix * rotationMatrix * scaleMatrix;
 
@@ -186,7 +303,7 @@ namespace Mivi.Console
             });
 
         // This should probably be logarithmic
-        private static float scaleVolume(float midiVelocity) => midiVelocity / 300f;
+        private static float scaleVolume(float midiVelocity) => midiVelocity / 100f;
 
         private static readonly Random _random = new Random();
 
@@ -353,9 +470,6 @@ void main()
             }
         }
 
-        // 2 because screenspace is a [-1, -1], [1, 1] square
-        const float KeyUnitWidth = 2f / 88f;
-
         /// <summary>
         /// Creates a VBO and VAO to store the vertices for a triangle.
         /// </summary>
@@ -368,14 +482,14 @@ void main()
                 .Select(a => new float[]
                 {
                     // front face
-                    KeyUnitWidth, 1.0f, 0.0f, // top right
-                    KeyUnitWidth, 0.0f, 0.0f, // bottom right
+                    1.0f, 1.0f, 0.0f, // top right
+                    1.0f, 0.0f, 0.0f, // bottom right
                     0.0f, 0.0f, 0.0f, // bottom left
                     0.0f, 1.0f, 0.0f,  // top left
 
                     // rear face
-                    KeyUnitWidth, 1.0f, -1.0f, // top right
-                    KeyUnitWidth, 0.0f, -1.0f, // bottom right
+                    1.0f, 1.0f, -1.0f, // top right
+                    1.0f, 0.0f, -1.0f, // bottom right
                     0.0f, 0.0f, -1.0f, // bottom left
                     0.0f, 1.0f, -1.0f  // top left
                 })
