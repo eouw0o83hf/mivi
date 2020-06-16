@@ -30,7 +30,7 @@ namespace Mivi.Console
         const float maxCameraMove = 0.25f;
 
         // map to a -1->1 continuum
-        const float keyUnitWidth = 0.05f;
+        const float keyUnitWidth = 0.5f;
         const float keySpacing = 0.0065f;
 
         // given a continuous key index, determines
@@ -60,9 +60,9 @@ namespace Mivi.Console
             Glfw.SetKeyCallback(window, KeyCallback);
 
             // Create present-key containers
-            var vertexContainers = CreateVertices(88);
-            // Past-key containers
-            var pastVertexContainers = CreateVertices(_state.PastNotes.Length);
+            var cubeVertexContainer = CreateCube();
+            var circleResolution = 100;
+            var cylinderVertexContainer = CreateCylinder(circleResolution);
 
             var colorLocation = glGetUniformLocation(program, "color");
             var tickLocation = glGetUniformLocation(program, "ticks");
@@ -222,7 +222,7 @@ namespace Mivi.Console
                     var color = colorProvider.GetColor(pastNote.Index);
                     glUniform3f(colorLocation, color[0], color[1], color[2]);
 
-                    glBindVertexArray(pastVertexContainers[i].VertexArray);
+                    glBindVertexArray(cylinderVertexContainer.VertexArray);
 
                     // top two of the rightmost column
                     var translateMatrix = new mat4(1.0f);
@@ -243,11 +243,11 @@ namespace Mivi.Console
 
                     glUniformMatrix4fv(mvpMatrixLocation, 1, false, mvpMatrix.to_array());
 
-                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, NULL);
+                    glDrawElements(GL_TRIANGLES, circleResolution * 3 * 2, GL_UNSIGNED_INT, NULL);
                 }
 
                 // Draw current notes
-                foreach (var (x, i) in vertexContainers.WithIndex())
+                for (var i = 0; i < 88; ++i)
                 {
                     var adjustedIndex = i + MidiNote.LowestPianoIndex;
 
@@ -261,7 +261,7 @@ namespace Mivi.Console
 
                     glUniform3f(colorLocation, color[0], color[1], color[2]);
 
-                    glBindVertexArray(x.VertexArray);
+                    glBindVertexArray(cubeVertexContainer.VertexArray);
 
                     // top two of the rightmost column
                     var translateMatrix = new mat4(1.0f);
@@ -470,16 +470,65 @@ void main()
             }
         }
 
+        private static unsafe VertexContainer CreateCylinder(int cylinderCircleVertexCount)
+        {
+            // describe a circle around a point
+            // closer face first, then further face
+            float radiansPerVertex = 2f * (float)Math.PI / cylinderCircleVertexCount;
+
+            var cylinderVertices = new float[cylinderCircleVertexCount * 2 * 3];
+            var cylinderIndeces = new uint[cylinderCircleVertexCount * 2 * 3];
+
+            var baseIndex = 0;
+            for (var z = 0; z < 2; ++z)
+            {
+                for (var i = 0; i < cylinderCircleVertexCount; ++i)
+                {
+                    // x
+                    cylinderVertices[baseIndex] = (float)Math.Cos(i * radiansPerVertex);
+                    // y
+                    cylinderVertices[baseIndex + 1] = (float)Math.Sin(i * radiansPerVertex);
+                    // z
+                    cylinderVertices[baseIndex + 2] = z;
+
+                    // current node
+                    cylinderIndeces[baseIndex] = (uint)(cylinderCircleVertexCount * z + i);
+                    // "next" node in the circle with wraparound
+                    var nextI = ((cylinderCircleVertexCount * z) + i + 1) % cylinderCircleVertexCount;
+                    cylinderIndeces[baseIndex + 1] = (uint)nextI;
+                    var otherI = z == 0 ? i : nextI;
+                    cylinderIndeces[baseIndex + 2] = (uint)((otherI + cylinderCircleVertexCount) % (cylinderCircleVertexCount * 2));
+
+
+                    baseIndex += 3;
+                }
+            }
+
+            SConsole.WriteLine("Vertices:");
+            for (var i = 0; i < cylinderVertices.Length / 3; ++i)
+            {
+                SConsole.WriteLine($"({cylinderVertices[i * 3]}, {cylinderVertices[i * 3 + 1]}, {cylinderVertices[i * 3 + 2]})");
+            }
+
+            SConsole.WriteLine();
+            SConsole.WriteLine();
+            SConsole.WriteLine("Indeces");
+            for (var i = 0; i < cylinderIndeces.Length / 3; ++i)
+            {
+                SConsole.WriteLine($"({cylinderIndeces[i * 3]}, {cylinderIndeces[i * 3 + 1]}, {cylinderIndeces[i * 3 + 2]})");
+            }
+
+            return CreateShapeCore(cylinderVertices, cylinderIndeces);
+        }
+
         /// <summary>
         /// Creates a VBO and VAO to store the vertices for a triangle.
         /// </summary>
         /// <param name="vao">The created vertex array object for the triangle.</param>
         /// <param name="vbo">The created vertex buffer object for the triangle.</param>
-        private static unsafe List<VertexContainer> CreateVertices(int count)
+        private static unsafe VertexContainer CreateCube()
         {
-            var indexedVertices = Enumerable
-                .Range(0, count)
-                .Select(a => new float[]
+            var vertices = new float[]
                 {
                     // front face
                     1.0f, 1.0f, 0.0f, // top right
@@ -492,8 +541,7 @@ void main()
                     1.0f, 0.0f, -1.0f, // bottom right
                     0.0f, 0.0f, -1.0f, // bottom left
                     0.0f, 1.0f, -1.0f  // top left
-                })
-                .ToList();
+                };
 
             var squareIndices = new uint[]
             {
@@ -522,54 +570,49 @@ void main()
                 0, 3, 2
             };
 
+            return CreateShapeCore(vertices, squareIndices);
+        }
 
+        private static unsafe VertexContainer CreateShapeCore(float[] vertices, uint[] indeces)
+        {
+            var vertexArrays = glGenVertexArrays(vertices.Length);
+            var vertexBuffers = glGenBuffers(vertices.Length);
 
-            var vertexArrays = glGenVertexArrays(indexedVertices.Count);
-            var vertexBuffers = glGenBuffers(indexedVertices.Count);
+            var VAO = glGenVertexArray();
+            var VBO = glGenBuffer();
+            var EBO = glGenBuffer();
 
-            var VAO = glGenVertexArrays(indexedVertices.Count);
-            var VBO = glGenBuffers(indexedVertices.Count);
-            var EBO = glGenBuffers(indexedVertices.Count);
+            // 1. bind Vertex Array Object
+            glBindVertexArray(VAO);
+            // 2. copy our vertices array in a vertex buffer for OpenGL to use
 
-            var result = new List<VertexContainer>();
-
-            for (var i = 0; i < indexedVertices.Count; ++i)
+            glBindBuffer(GL_ARRAY_BUFFER, VBO);
+            fixed (float* v = &vertices[0])
             {
-                // 1. bind Vertex Array Object
-                glBindVertexArray(VAO[i]);
-                // 2. copy our vertices array in a vertex buffer for OpenGL to use
-
-                glBindBuffer(GL_ARRAY_BUFFER, VBO[i]);
-                var vertices = indexedVertices[i];
-                fixed (float* v = &vertices[0])
-                {
-                    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.Length, v, GL_STATIC_DRAW);
-                }
-
-                // 3. copy our index array in a element buffer for OpenGL to use
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO[i]);
-                fixed (uint* index = &squareIndices[0])
-                {
-                    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(int) * squareIndices.Length, index, GL_STATIC_DRAW);
-                }
-
-                glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), NULL);
-                glEnableVertexAttribArray(0);
-
-                // Reset buffer bindings
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-                glBindVertexArray(0);
-
-                result.Add(new VertexContainer
-                {
-                    Color = GetRandomColor(),
-                    ElementBuffer = EBO[i],
-                    VertexArray = VAO[i],
-                    VertexBuffer = VBO[i],
-                });
+                glBufferData(GL_ARRAY_BUFFER, sizeof(float) * vertices.Length, v, GL_STATIC_DRAW);
             }
 
-            return result;
+            // 3. copy our index array in a element buffer for OpenGL to use
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+            fixed (uint* index = &indeces[0])
+            {
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint) * indeces.Length * 2, index, GL_STATIC_DRAW);
+            }
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), NULL);
+            glEnableVertexAttribArray(0);
+
+            // Reset buffer bindings
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            glBindVertexArray(0);
+
+            return new VertexContainer
+            {
+                Color = GetRandomColor(),
+                ElementBuffer = EBO,
+                VertexArray = VAO,
+                VertexBuffer = VBO,
+            };
         }
 
         private class VertexContainer
