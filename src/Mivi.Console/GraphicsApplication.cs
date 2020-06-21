@@ -23,11 +23,11 @@ namespace Mivi.Console
             _state = state;
         }
 
-        private const float ticksPerZUnit = 50f;
+        private const float ticksPerZUnit = 5f;
         private const float minVelocity = 0.1f;
 
         const float ticksStep = 0.1f;
-        const float maxCameraMove = 0.25f;
+        const float maxCameraMove = 0.7f;
 
         // map to a -1->1 continuum
         const float keyUnitWidth = 0.5f;
@@ -55,14 +55,15 @@ namespace Mivi.Console
             // enable depth testing to avoid
             // z-indexing issues
             glEnable(GL_DEPTH_TEST);
-            glDepthFunc(GL_LEQUAL);
+            glDepthMask(true);
+            glDepthFunc(GL_GEQUAL);
 
             Glfw.SetKeyCallback(window, KeyCallback);
 
             // Create present-key containers
-            var cubeVertexContainer = CreateCube();
             var circleResolution = 100;
             var cylinderVertexContainer = CreateCylinder(circleResolution);
+            var cubeVertexContainer = CreateCube();
 
             var colorLocation = glGetUniformLocation(program, "color");
             var tickLocation = glGetUniformLocation(program, "ticks");
@@ -75,10 +76,11 @@ namespace Mivi.Console
                 100f    // z max render
             );
 
-            var defaultCameraPosition = new vec3(0f, 1.5f, 6.5f);
+            var defaultCameraPosition = new vec3(0f, 40f, 44f);
             var currentCameraPosition = defaultCameraPosition;
 
-            var defaultCameraCenter = new vec3(0, 1.1f, -2.0f);
+            var cameraCenterZ = -10f;
+            var defaultCameraCenter = new vec3(0, 17.5f, cameraCenterZ);
             var currentCameraCenter = defaultCameraCenter;
             var viewMatrix = glm.lookAt(
                currentCameraPosition,        // eye
@@ -106,11 +108,9 @@ namespace Mivi.Console
                 Glfw.PollEvents();
 
                 // Clear the framebuffer to defined background color
-                glClear(GL_COLOR_BUFFER_BIT);
-                // Clear depth buffer to avoid flickering
-                glClear(GL_DEPTH_BUFFER_BIT);
 
                 glUseProgram(program);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
                 var keys = _state.NoteVelocities;
 
@@ -158,7 +158,7 @@ namespace Mivi.Console
                         var zPosition = width * widthFactor;
 
                         nextCameraPosition = new vec3(xPosition, yPosition, zPosition);
-                        nextCameraCenter = new vec3(xPosition, yPosition + 1f, -10f);
+                        nextCameraCenter = new vec3(xPosition, yPosition + 1f, cameraCenterZ);
                     }
                 }
                 else
@@ -222,7 +222,7 @@ namespace Mivi.Console
                     var color = colorProvider.GetColor(pastNote.Index);
                     glUniform3f(colorLocation, color[0], color[1], color[2]);
 
-                    glBindVertexArray(cylinderVertexContainer.VertexArray);
+                    glBindVertexArray(cubeVertexContainer.VertexArray);
 
                     // top two of the rightmost column
                     var translateMatrix = new mat4(1.0f);
@@ -243,7 +243,7 @@ namespace Mivi.Console
 
                     glUniformMatrix4fv(mvpMatrixLocation, 1, false, mvpMatrix.to_array());
 
-                    glDrawElements(GL_TRIANGLES, circleResolution * 3 * 2, GL_UNSIGNED_INT, NULL);
+                    glDrawElements(GL_TRIANGLES, 6 * 3 * 3, GL_UNSIGNED_INT, NULL);
                 }
 
                 // Draw current notes
@@ -282,7 +282,9 @@ namespace Mivi.Console
 
                     glUniformMatrix4fv(mvpMatrixLocation, 1, false, mvpMatrix.to_array());
 
-                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, NULL);
+                    glDrawElements(GL_TRIANGLES, 6 * 3 * 3, GL_UNSIGNED_INT, NULL);
+                    // example for rendering cylinder
+                    // glDrawElements(GL_TRIANGLES, circleResolution * 3 * 2, GL_UNSIGNED_INT, NULL);
                 }
             }
 
@@ -303,7 +305,7 @@ namespace Mivi.Console
             });
 
         // This should probably be logarithmic
-        private static float scaleVolume(float midiVelocity) => midiVelocity / 100f;
+        private static float scaleVolume(float midiVelocity) => midiVelocity / 15f;
 
         private static readonly Random _random = new Random();
 
@@ -407,9 +409,7 @@ void main()
     float r = rectify(cos(colorSeed));
     float g = rectify(cos(colorSeed + 2.1));
     float b = rectify(cos(colorSeed + 4.2));
-    float a = 1.0;
-    result = vec4(r, g, b, a);
-    result = result + 0.1;
+    result = vec4(r, g, b, 1.0);
 }
 ";
 
@@ -489,7 +489,7 @@ void main()
                     // y
                     cylinderVertices[baseIndex + 1] = (float)Math.Sin(i * radiansPerVertex);
                     // z
-                    cylinderVertices[baseIndex + 2] = z;
+                    cylinderVertices[baseIndex + 2] = -z;
 
                     // current node
                     cylinderIndeces[baseIndex] = (uint)(cylinderCircleVertexCount * z + i);
@@ -502,20 +502,6 @@ void main()
 
                     baseIndex += 3;
                 }
-            }
-
-            SConsole.WriteLine("Vertices:");
-            for (var i = 0; i < cylinderVertices.Length / 3; ++i)
-            {
-                SConsole.WriteLine($"({cylinderVertices[i * 3]}, {cylinderVertices[i * 3 + 1]}, {cylinderVertices[i * 3 + 2]})");
-            }
-
-            SConsole.WriteLine();
-            SConsole.WriteLine();
-            SConsole.WriteLine("Indeces");
-            for (var i = 0; i < cylinderIndeces.Length / 3; ++i)
-            {
-                SConsole.WriteLine($"({cylinderIndeces[i * 3]}, {cylinderIndeces[i * 3 + 1]}, {cylinderIndeces[i * 3 + 2]})");
             }
 
             return CreateShapeCore(cylinderVertices, cylinderIndeces);
@@ -545,17 +531,13 @@ void main()
 
             var squareIndices = new uint[]
             {
-                // rear face
-                4, 5, 6,
-                4, 7, 6,
-
-                // top face
-                7, 4, 0,
-                7, 3, 0,
-
                 // bottom face
                 6, 5, 1,
                 6, 2, 1,
+
+                // rear face
+                4, 5, 6,
+                4, 7, 6,
 
                 // left face
                 7, 6, 2,
@@ -564,6 +546,10 @@ void main()
                 // right face
                 5, 1, 0,
                 5, 4, 0,
+
+                // top face
+                7, 4, 0,
+                7, 3, 0,
 
                 // front face
                 0, 1, 2,
@@ -596,7 +582,7 @@ void main()
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
             fixed (uint* index = &indeces[0])
             {
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint) * indeces.Length * 2, index, GL_STATIC_DRAW);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint) * indeces.Length, index, GL_STATIC_DRAW);
             }
 
             glVertexAttribPointer(0, 3, GL_FLOAT, false, 3 * sizeof(float), NULL);
